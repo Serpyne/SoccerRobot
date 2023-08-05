@@ -2,7 +2,7 @@
 ROBIN.py is what runs on the robot, which controls sending sensor values.
 server.py is what you run on your laptop, so the robot can connect to it, and it get the sensor values and put it into a nice GUI :)
 
-instructions:
+# Instructions:
 1. connect the ev3 brick via bluetooth
 	scan for devices and connect to the laptop
 	make sure it says status: connected
