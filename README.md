@@ -1,6 +1,6 @@
 # Index
-ROBIN.py is what runs on the robot, which controls sending sensor values.
-server.py is what you run on your laptop, so the robot can connect to it, and it get the sensor values and put it into a nice GUI :)
+ROBIN.py is what runs on the robot, which controls client-sided movement + receiving controllor values
+server.py is what you run on your laptop, so the robot can connect to it and an external controllor communicates with it.
 
 # Instructions:
 1. connect the ev3 brick via bluetooth
@@ -18,3 +18,11 @@ server.py is what you run on your laptop, so the robot can connect to it, and it
 	this can be done by entering 'pip install tkinter' in terminal
 5. once server is listening, run ROBIN.py on the ev3.
 	if all goes well, after around 10 seconds the gui should open on the laptop and you can control it with the joystick on the top right
+
+# To implement:
+- Attacking and defensive strategies
+- Communication between both robots
+- Second robot script for the other robot which uses two IRs instead of an IR seeker.
+
+![Flowchart](/assets/img1.png?raw=true "Flowchart")
+![Defense](/assets/img2.png?raw=true "Defense")
