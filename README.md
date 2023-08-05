@@ -31,6 +31,7 @@ Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: J
 - Attacking and defensive strategies
 - Communication between both robots
 - Second robot script for the other robot which uses two IRs instead of an IR seeker.<br>
+
 *Still not sure what this means, probably referring to ultrasonic detection of the walls.
 
 # Flowchart
