@@ -2,6 +2,8 @@
 ROBIN.py is what runs on the robot, which controls client-sided movement + receiving controllor values
 server.py is what you run on your laptop, so the robot can connect to it and an external controllor communicates with it.
 
+`test`
+
 # Instructions:
 1. <h6>connect the ev3 brick via bluetooth</h6>
 	scan for devices and connect to the laptop
