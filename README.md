@@ -1,6 +1,8 @@
+Our team, *404 Not Found* is lead by Kartik, and our builders and programmers are Jerimiah, Aryan, Keshva, Aditya, and I (Robin). With a second place finish at the Term 2 In-House competition, we are aiming for first place at the next Robocup competition. I would like to acknoledge @denyahnov and his team for the IR seeker framework and giving us lots of inspiration throughout this team.
+
 # Index
-ROBIN.py is what runs on the robot, which controls client-sided movement + receiving controllor values
-server.py is what you run on your laptop, so the robot can connect to it and an external controllor communicates with it.
+  * ROBIN.py is what runs on the robot, which controls client-sided movement + receiving controllor values
+  * server.py is what you run on your laptop, so the robot can connect to it and an external controllor communicates with it.
 
 # Instructions:
 1. <h6>connect the ev3 brick via bluetooth</h6>
