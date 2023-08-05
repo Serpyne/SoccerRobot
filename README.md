@@ -22,15 +22,16 @@ Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: J
   * if all goes well, after around 10 seconds the gui should open on the laptop and you can control it with the joystick on the top right
 
 # Features
-- Joystick remote-control
+- Joystick remote control
 - Holonomic wheel system
-- Ball following capabilities
+- Ball-following capabilities
 
 # To implement:
-- Compass sensor
+- Compass, motion*, and ultrasonic sensors.
 - Attacking and defensive strategies
 - Communication between both robots
 - Second robot script for the other robot which uses two IRs instead of an IR seeker.
+*Still not sure what this means, probably referring to ultrasonic detection of the walls.
 
 # Flowchart
 ![Flowchart](/assets/img1.png?raw=true "Flowchart")
