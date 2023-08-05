@@ -1,4 +1,4 @@
-Our team, *404 Not Found*, is lead by Kartik, and our builders and programmers: Jerimiah, Aryan, Keshva, Aditya, and I (Robin). With a second place finish for the Term 2 In-House competition, we are aiming for first place at the next Robocup competition. I would like to acknoledge [@denyahnov](https://github.com/denyahnov) and his team for the IR seeker framework and giving us lots of inspiration throughout this term.
+Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: Jerimiah, Aryan, Keshva, Aditya, and I (Robin). With a second place finish for the Term 2 In-House competition, we are aiming for first place at the next Robocup competition. I would like to acknoledge [@denyahnov](https://github.com/denyahnov) and his team for the IR seeker framework and giving us lots of inspiration throughout the term.
 
 # Index
   * ROBIN.py is what runs on the robot, which controls client-sided movement + receiving controller values
@@ -21,7 +21,13 @@ Our team, *404 Not Found*, is lead by Kartik, and our builders and programmers: 
 5. <h6>once server is listening, run ROBIN.py on the ev3.</h6>
   * if all goes well, after around 10 seconds the gui should open on the laptop and you can control it with the joystick on the top right
 
+# Features
+- Joystick remote-control
+- Holonomic wheel system
+- Ball following capabilities
+
 # To implement:
+- Compass sensor
 - Attacking and defensive strategies
 - Communication between both robots
 - Second robot script for the other robot which uses two IRs instead of an IR seeker.
