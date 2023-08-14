@@ -38,3 +38,5 @@ Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: J
 # Flowchart
 ![Flowchart](/assets/img1.png?raw=true "Flowchart")
 ![Defense](/assets/img2.png?raw=true "Defense")
+# Pseudocode
+![Pseudocode](/assets/img3.png?raw=true "Pseudocode")
