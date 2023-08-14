@@ -41,12 +41,15 @@ ts = None
 can_press = False
 if mode == MOTORS:
     motors = [
-        MediumMotor(OUTPUT_A), # BOTTOM-LEFT  [0]
-        MediumMotor(OUTPUT_B), # TOP-LEFT     [1]
-        MediumMotor(OUTPUT_C), # TOP-RIGHT    [2]
-        MediumMotor(OUTPUT_D)  # BOTTOM-RIGHT [3]
+        MediumMotor(OUTPUT_A), # FRONT  [0]
+        MediumMotor(OUTPUT_B), # RIGHT  [1]
+        MediumMotor(OUTPUT_C), # BACK   [2]
+        MediumMotor(OUTPUT_D)  # LEFT   [3]
     ]
-
+    compass = Sensor(driver_name="ht-nxt-compass", address=INPUT_2)
+    compass.mode = "COMPASS"
+    compass_angle = 0
+    
 elif mode == SENSORS:
     ts = TouchSensor(INPUT_1)
     gyroscope = Sensor(driver_name="ht-nxt-compass", address=INPUT_2)
@@ -87,7 +90,7 @@ angle = strength = None
 
 def main_():
     """Main loop which controls the button press, and getting the compass and colour sensor values."""
-    global gyro_angle, sensed_colour, angle, strength, vel, pos
+    global gyro_angle, sensed_colour, angle, strength, vel, pos, compass_angle
     while True:
         # Button logic
         if mode == SENSORS:
@@ -103,10 +106,11 @@ def main_():
             sensed_colour = colour_sensor.rgb
 
         if mode == MOTORS:
+            compass_angle = compass.value()
             if movement_mode == AUTOMATIC:
                 if current_strat == ATTACK:
                     angle, strength = sensor.read()
-                    a = (angle % 12) * pi/6 + pi/4
+                    a = (angle % 12) * pi/6 #+ (compass_angle * pi/180) #+ pi/4
                     vel = [cos(a)*720, sin(a)*720]
                 elif current_strat == DEFENSE:
                     vel[0] = pos[0]/10
