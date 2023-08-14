@@ -3,6 +3,7 @@ Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: J
 # Index
   * ROBIN.py is what runs on the robot, which controls client-sided movement + receiving controller values
   * server.py is what you run on your laptop, so the robot can connect to it and an external controller communicates with it.
+  * Currently working on _no_remote_control.py for the state comp.
 
 # Instructions:
 1. <h6>connect the ev3 brick via bluetooth</h6>
