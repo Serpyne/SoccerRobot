@@ -1,4 +1,4 @@
-Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: Jerimiah, Aryan, Keshva, Aditya, and I (Robin). With a second place finish for the Term 2 In-House competition, we are aiming for first place at the next Robocup competition. I would like to acknoledge [@denyahnov](https://github.com/denyahnov) and his team for the IR seeker framework and giving us lots of inspiration throughout the term.
+Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: Jerimiah, Aryan, Keshav, Aditya, and I (Robin). With a second place finish for the Term 2 In-House competition, we are aiming for first place at the next Robocup competition. I would like to acknoledge [@denyahnov](https://github.com/denyahnov) and his team for the IR seeker framework and giving us lots of inspiration throughout the term.
 
 # Index
   * ROBIN.py is what runs on the robot, which controls client-sided movement + receiving controller values
