@@ -40,10 +40,10 @@ def main_():
     ultrasonic = UltrasonicSensor(INPUT_3)
 
     motors = [
-        MediumMotor(OUTPUT_A),      # LEFT        [0]
-        MediumMotor(OUTPUT_B),      # FRONT       [1]
-        MediumMotor(OUTPUT_C),      # RIGHT       [2]
-        MediumMotor(OUTPUT_D)       # BACK        [3]
+        MediumMotor(OUTPUT_A),      # BACK        [0]
+        MediumMotor(OUTPUT_B),      # LEFT       [1]
+        MediumMotor(OUTPUT_C),      # FRONT       [2]
+        MediumMotor(OUTPUT_D)       # RIGHT        [3]
     ]
     compass = Sensor(driver_name="ht-nxt-compass", address=INPUT_2)
     compass.mode = "COMPASS"
@@ -107,15 +107,50 @@ def main_():
                 a = pi * (randint(0, 1)+.5)
                 move(a)
 
+            dx = dy = None
+
+            # IF ROBOT ROTATED 45 DEGREES LEFT AT ALL TIMES
             if (tick % 30) == 0: # every 300 ms
                 if view_distance:
                     if view_distance > 100: # if doesnt detect walls for 100cm (assuming ultrasonic is at the right position)
                         move(3*pi/2 - car_orientation) # move left in x direction
 
                     else:
-                        dx = dy = (view_distance**2) / 2 # same as c^2 = a^2 + b^2 (view_distance = sqrt(2*dx))
-                        if dx < 30: # if x dist is less than 30cm
-                            move(pi/2 - car_orientation) # move right
+                        dx = (view_distance**2) / 2 # same as c^2 = a^2 + b^2 (view_distance = sqrt(2*dx))
+                        if dx < 85: # if x dist is less than 85cm
+                            move(pi/2 - car_orientation) # move right for 200ms
+                        sleep(0.2); tick += 20
+
+                        view_distance = ultrasonic.distance_centimeters # take a second reading bc why not
+                        dy = (view_distance**2) / 2
+                        if dy > 20: # if y dist is more than 20cm
+                            move(pi - car_orientation) # move back to the goal
+
+            # IF ROBOT IS FACING STRAIGHT FORWARD
+            if view_distance:
+                if (tick % 30) == 0:
+                    if compass_angle > 352 or compass_angle < 8: # if facing forward
+                        dx = ultrasonic.distance_centimeters
+                        for m in motors: # TURN LEFT 90 DEGREES
+                            m.polarity = "normal" # TEST AT SCHOOL IF IT TURNS LEFT OR RIGHT (SHOULD BE LEFT)
+                            m.run_forever(speed_sp=100)
+                        
+                    else:
+                        for m in motors:
+                            m.polarity = "inverse"
+                            m.run_forever(speed_sp=100)
+
+                    if compass_angle > 255 and compass_angle < 285:
+                        dy = ultrasonic.distance_centimeters
+                
+                if compass_angle > 255 and compass_angle < 285: # once it reaches left, stop
+                    for m in motors:
+                        m.stop()
+                if compass_angle > 352 or compass_angle < 8:
+                    for m in motors:
+                        m.stop()
+                    
+                        
 
             if see_ball:
                 current_strat = ATTACK
@@ -152,7 +187,7 @@ def main_():
             motors[3].run_forever(speed_sp=vel[1])
 
         translated_compass_angle = (compass_angle + 45) % 360
-        if translated_compass_angle > 8-45 and translated_compass_angle < 352:                                # correcting rotation
+        if translated_compass_angle > 8 and translated_compass_angle < 352:                                # correcting rotation
             for m in motors:
                 if translated_compass_angle > 180:
                     m.polarity = "inversed"
