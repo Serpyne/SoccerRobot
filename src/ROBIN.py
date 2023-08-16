@@ -8,7 +8,7 @@ from time import sleep
 import socket, sys, threading, json
 from os.path import join, dirname
 from random import randint
-from math import pi, cos, sin
+from math import pi, cos, sin, atan2
 
 from ev3dev2.motor import MediumMotor, OUTPUT_A, OUTPUT_B, OUTPUT_C, OUTPUT_D
 from ev3dev2.sensor import Sensor, INPUT_1, INPUT_2, INPUT_3
@@ -55,6 +55,7 @@ elif mode == SENSORS:
     gyroscope = Sensor(driver_name="ht-nxt-compass", address=INPUT_2)
     gyroscope.mode = "COMPASS"
     gyro_angle = 0
+    original_angle = gyroscope.value()
 
     colour_sensor = ColorSensor(INPUT_3)
     sensed_colour = None
@@ -102,7 +103,7 @@ def main_():
                 can_press = True
 
             # Get the gyroscope and colour sensor values into variables
-            gyro_angle = gyroscope.value()
+            gyro_angle = gyroscope.value() - original_angle
             sensed_colour = colour_sensor.rgb
 
         if mode == MOTORS:
@@ -171,6 +172,9 @@ def receive():
                 elif "move" in r:
                     # if movement_mode == MANUAL:
                     vel = [round(float(x), 1) for x in r.split()[1].split(",")]
+                    a = atan2(vel[1], vel[0])
+                    a -= (gyro_angle) * pi/180
+                    vel = [cos(a)*720, sin(a)*720]
                         # client.send(("debug "+str(vel)).encode())
 
             else: break # End loop if the server has closed.
