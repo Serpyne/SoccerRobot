@@ -58,6 +58,8 @@ def main_():
     see_ball = False
     view_distance = None
 
+    done_defense = False
+
     original_pos = [0, 0]
     pos = [0, 0]
     vel = [0, 0]
@@ -84,6 +86,7 @@ def main_():
         # PSEUDOCODE
 
         if current_strat == ATTACK:                                                  # attacking mode
+            done_defense = False
             if see_ball:
                 if global_angle > 3*pi/2 and global_angle < pi/2:
                     move(pi/2 - car_orientation)
@@ -127,31 +130,31 @@ def main_():
                             move(pi - car_orientation) # move back to the goal
 
             # IF ROBOT IS FACING STRAIGHT FORWARD
-            if view_distance:
-                if (tick % 30) == 0:
-                    if compass_angle > 352 or compass_angle < 8: # if facing forward
-                        dx = ultrasonic.distance_centimeters
-                        for m in motors: # TURN LEFT 90 DEGREES
-                            m.polarity = "normal" # TEST AT SCHOOL IF IT TURNS LEFT OR RIGHT (SHOULD BE LEFT)
-                            m.run_forever(speed_sp=100)
-                        
-                    else:
-                        for m in motors:
-                            m.polarity = "inverse"
-                            m.run_forever(speed_sp=100)
+            # if not done_defense:
+            #     if view_distance:
+            #         if (tick % 30) == 0:
+            #             if compass_angle > 352 or compass_angle < 8: # if facing forward
+            #                 dx = ultrasonic.distance_centimeters
+            #                 for m in motors: # TURN LEFT 90 DEGREES
+            #                     m.polarity = "normal" # TEST AT SCHOOL IF IT TURNS LEFT OR RIGHT (SHOULD BE LEFT)
+            #                     m.run_forever(speed_sp=100)
+                            
+            #             else:
+            #                 for m in motors:
+            #                     m.polarity = "inverse"
+            #                     m.run_forever(speed_sp=100)
 
-                    if compass_angle > 255 and compass_angle < 285:
-                        dy = ultrasonic.distance_centimeters
-                
-                if compass_angle > 255 and compass_angle < 285: # once it reaches left, stop
-                    for m in motors:
-                        m.stop()
-                if compass_angle > 352 or compass_angle < 8:
-                    for m in motors:
-                        m.stop()
+            #             if compass_angle > 255 and compass_angle < 285:
+            #                 dy = ultrasonic.distance_centimeters
                     
-                        
-
+            #         if compass_angle > 255 and compass_angle < 285: # once it reaches left, stop
+            #             for m in motors:
+            #                 m.stop()
+            #         if compass_angle > 352 or compass_angle < 8:
+            #             for m in motors:
+            #                 m.stop()
+            #         done_defense = True
+                
             if see_ball:
                 current_strat = ATTACK
 

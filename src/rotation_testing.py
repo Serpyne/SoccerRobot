@@ -71,30 +71,8 @@ def main_():
         else:
             for m in motors:
                 m.stop()
-            if view_distance:
-                if (tick % 30) == 0:
-                    if compass_angle > 352 or compass_angle < 8: # if facing forward
-                        dx = ultrasonic.distance_centimeters
-                        for m in motors: # TURN LEFT 90 DEGREES
-                            m.polarity = "normal" # TEST AT SCHOOL IF IT TURNS LEFT OR RIGHT (SHOULD BE LEFT)
-                            m.run_forever(speed_sp=100)
-                        
-                    else:
-                        for m in motors:
-                            m.polarity = "inverse"
-                            m.run_forever(speed_sp=100)
-
-                    if compass_angle > 255 and compass_angle < 285:
-                        dy = ultrasonic.distance_centimeters
-                
-                if compass_angle > 255 and compass_angle < 285: # once it reaches left, stop
-                    for m in motors:
-                        m.stop()
-                if compass_angle > 352 or compass_angle < 8:
-                    for m in motors:
-                        m.stop()
         
-        # Test this
+        # Test this                                                                                                
         # if view_distance:
         #     if (tick % 30) == 0:
         #         if compass_angle > 352 or compass_angle < 8: # if facing forward
