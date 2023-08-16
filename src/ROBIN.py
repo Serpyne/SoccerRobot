@@ -172,7 +172,7 @@ def receive():
                 elif "move" in r:
                     # if movement_mode == MANUAL:
                     vel = [round(float(x), 1) for x in r.split()[1].split(",")]
-                    a = atan2(vel[1], vel[0])
+                    a = atan2(vel[1], vel[0]) # compass correction
                     a -= (gyro_angle) * pi/180
                     vel = [cos(a)*720, sin(a)*720]
                         # client.send(("debug "+str(vel)).encode())
