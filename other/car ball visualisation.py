@@ -1,3 +1,5 @@
+# visualising the ball in terms of the car (including rotation)
+
 import pygame, sys
 from pygame.locals import *
 from math import atan2, sqrt, radians, sin, cos

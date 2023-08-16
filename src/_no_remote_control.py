@@ -14,39 +14,13 @@ from ev3dev2.motor import MediumMotor, OUTPUT_A, OUTPUT_B, OUTPUT_C, OUTPUT_D
 from ev3dev2.sensor import Sensor, INPUT_1, INPUT_2, INPUT_3
 from ev3dev2.led import Leds
 
+from menu import *
 from sensor import IRSeeker360
 
 ATTACK = 0
 DEFENSE = 1
-current_strat = ATTACK
 
-sensor = IRSeeker360(INPUT_1)
-
-motors = [
-    MediumMotor(OUTPUT_A),      # LEFT        [0]
-    MediumMotor(OUTPUT_B),      # FRONT       [1]
-    MediumMotor(OUTPUT_C),      # RIGHT       [2]
-    MediumMotor(OUTPUT_D)       # BACK        [3]
-]
-compass = Sensor(driver_name="ht-nxt-compass", address=INPUT_2)
-compass.mode = "COMPASS"
-compass_angle = 0
-original_angle = compass.value()
-
-data = json.load(open(join(dirname(__file__), "./options.json")))
-
-car_orientation = 0
 direction = 0
-global_angle = 0
-angle = strength = None
-see_ball = False
-
-original_pos = [0, 0]
-pos = [0, 0]
-vel = [0, 0]
-
-tick = 0
-
 def move(r):
     global direction
     if r:
@@ -57,8 +31,36 @@ def stop():
     direction = None
 
 def main_():
-    """Main loop which controls the button press, and getting the compass and colour sensor values."""
-    global angle, strength, vel, pos, compass_angle, see_ball, car_orientation, current_strat, tick, global_angle
+    current_strat = ATTACK
+
+    sensor = IRSeeker360(INPUT_1)
+
+    motors = [
+        MediumMotor(OUTPUT_A),      # LEFT        [0]
+        MediumMotor(OUTPUT_B),      # FRONT       [1]
+        MediumMotor(OUTPUT_C),      # RIGHT       [2]
+        MediumMotor(OUTPUT_D)       # BACK        [3]
+    ]
+    compass = Sensor(driver_name="ht-nxt-compass", address=INPUT_2)
+    compass.mode = "COMPASS"
+    compass_angle = 0
+    original_angle = compass.value()
+
+    data = json.load(open(join(dirname(__file__), "./options.json")))
+
+    car_orientation = 0
+    global_angle = 0
+    angle = strength = None
+    see_ball = False
+
+    original_pos = [0, 0]
+    pos = [0, 0]
+    vel = [0, 0]
+
+    tick = 0
+
+    display_menu = Menu((3, 3))
+
     while True:
         # Button logic
         compass_angle = compass.value() - original_angle                             # read compass sensor
@@ -100,8 +102,6 @@ def main_():
             if see_ball:
                 current_strat = ATTACK
 
-
-
         vel[0] = cos(direction) * 720
         vel[1] = sin(direction) * 720
 
@@ -118,6 +118,7 @@ def main_():
             motors[2].polarity = "normal"
             motors[0].run_forever(speed_sp=vel[0])
             motors[2].run_forever(speed_sp=vel[0])
+
         if vel[1] == 0:
             motors[1].stop()
             motors[3].stop()
@@ -149,6 +150,12 @@ def main_():
         sleep(0.01)
         tick += 1
 
-main_()
+        if (tick % 5) == 0 and display_menu.active:
+            display_menu.update()
+    
+        if display_menu.command == "kill":
+            break
 
-sensor.close()
+    sensor.close()
+
+main_()
