@@ -8,10 +8,11 @@ from time import sleep
 import sys, threading, json
 from os.path import join, dirname
 from random import randint
-from math import pi, cos, sin, radians, atan2
+from math import pi, cos, sin, radians, atan2, sqrt
 
 from ev3dev2.motor import MediumMotor, OUTPUT_A, OUTPUT_B, OUTPUT_C, OUTPUT_D
 from ev3dev2.sensor import Sensor, INPUT_1, INPUT_2, INPUT_3
+from ev3dev2.sensor.lego import UltrasonicSensor
 from ev3dev2.led import Leds
 
 from menu import *
@@ -20,11 +21,13 @@ from sensor import IRSeeker360
 ATTACK = 0
 DEFENSE = 1
 
+FIELD_SIZE = [243, 182]
+
 direction = 0
 def move(r):
     global direction
     if r:
-        direction = r
+        direction = r % (2*pi)
 
 def stop():
     global direction
@@ -34,6 +37,7 @@ def main_():
     current_strat = ATTACK
 
     sensor = IRSeeker360(INPUT_1)
+    ultrasonic = UltrasonicSensor(INPUT_3)
 
     motors = [
         MediumMotor(OUTPUT_A),      # LEFT        [0]
@@ -52,6 +56,7 @@ def main_():
     global_angle = 0
     angle = strength = None
     see_ball = False
+    view_distance = None
 
     original_pos = [0, 0]
     pos = [0, 0]
@@ -72,6 +77,9 @@ def main_():
         see_ball = False
         if strength > 0:
             see_ball = True
+
+        if (tick % 30) == 0: # every 300ms
+            view_distance = ultrasonic.distance_centimeters
 
         # PSEUDOCODE
 
@@ -98,6 +106,16 @@ def main_():
             if (tick % 200) == 0:
                 a = pi * (randint(0, 1)+.5)
                 move(a)
+
+            if (tick % 30) == 0: # every 300 ms
+                if view_distance:
+                    if view_distance > 100: # if doesnt detect walls for 100cm (assuming ultrasonic is at the right position)
+                        move(3*pi/2 - car_orientation) # move left in x direction
+
+                    else:
+                        dx = dy = (view_distance**2) / 2 # same as c^2 = a^2 + b^2 (view_distance = sqrt(2*dx))
+                        if dx < 30: # if x dist is less than 30cm
+                            move(pi/2 - car_orientation) # move right
 
             if see_ball:
                 current_strat = ATTACK
@@ -133,13 +151,14 @@ def main_():
             motors[1].run_forever(speed_sp=vel[1])
             motors[3].run_forever(speed_sp=vel[1])
 
-        if compass_angle > 8 and compass_angle < 352:                                # correcting rotation
+        translated_compass_angle = (compass_angle + 45) % 360
+        if translated_compass_angle > 8-45 and translated_compass_angle < 352:                                # correcting rotation
             for m in motors:
-                if compass_angle > 180:
+                if translated_compass_angle > 180:
                     m.polarity = "inversed"
-                elif compass_angle <= 180:
+                elif translated_compass_angle <= 180:
                     m.polarity = "normal"
-                m.run_forever(speed_sp=[0, 180][compass_angle>180] - (compass_angle % 180)) # one rotation = 23.9cm travelled
+                m.run_forever(speed_sp=[0, 180][translated_compass_angle>180] - (translated_compass_angle % 180)) # one rotation = 23.9cm travelled
         else:
             for m in motors:
                 m.stop()
