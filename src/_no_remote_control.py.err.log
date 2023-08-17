@@ -1,0 +1,14 @@
+Exception in thread Thread-1:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/robot/Soccer Robot/src/_no_remote_control.py", line 83, in main_
+    angle, strength = sensor.read()                                              # read ir seeker angle + strength
+  File "/home/robot/Soccer Robot/src/sensor.py", line 13, in read
+    raw_ir = [self.bus.read_i2c_block_data(self.i2c_address, i, 2) for i in range(12)]
+  File "/home/robot/Soccer Robot/src/sensor.py", line 13, in <listcomp>
+    raw_ir = [self.bus.read_i2c_block_data(self.i2c_address, i, 2) for i in range(12)]
+OSError: [Errno 9] Bad file descriptor
+

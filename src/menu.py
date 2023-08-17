@@ -13,10 +13,11 @@ class Rect:
         return [self.x, self.y, self.w, self.h]
 
 class DisplayButton:
-    def __init__(self, label, command, rect: Rect):
+    def __init__(self, label, command, pos):
         self.label = label
         self.command = command
-        self.rect = rect        
+        self.pos = pos
+        self.rect = Rect(0, 0, 50, 50)
 
     def update(self, screen: Display, fill=False):
         screen.draw.rectangle(xy=self.rect.pos, fill="white black".split()[bool(fill)])
@@ -33,7 +34,8 @@ class Menu:
         self.controls = Button()
 
         self.size = size
-        self.buttons :list[DisplayButton] = []
+        self.buttons  = []
+        self.button_size = (self.screen.xres//self.size[0], self.screen.yres//self.size[1])
 
         self.cursor_index = 0
 
@@ -43,20 +45,20 @@ class Menu:
     
     def update(self):
 
-        if self.buttons.backspace: 
+        if self.controls.backspace: 
             return
 
         self.screen.clear()
 
-        if self.buttons.right: self.cursor_index += 1
-        elif self.buttons.left: self.cursor_index -= 1
+        if self.controls.right: self.cursor_index += 1
+        elif self.controls.left: self.cursor_index -= 1
         
-        if self.buttons.up: self.cursor_index += self.size[0]
-        if self.buttons.down: self.cursor_index -= self.size[0]
+        if self.controls.up: self.cursor_index += self.size[0]
+        if self.controls.down: self.cursor_index -= self.size[0]
 
         self.cursor_index = (self.cursor_index % len(self.buttons))
 
-        if self.buttons.enter:
+        if self.controls.enter:
             self.command = self.buttons[self.cursor_index].command
 
         for i, button in enumerate(self.buttons): # draw buttons
@@ -69,12 +71,13 @@ class Menu:
         self.buttons.wait_for_released(self.buttons.buttons_pressed)
 
     def add_button(self, button: DisplayButton):
+        button.rect = Rect(button.pos[0], button.pos[1], self.button_size[0], self.button_size[1])
         self.buttons.append(button)
 
-if __name__ == "__main__":
-    menu = Menu(size=(3, 3))
-    menu.add_button(DisplayButton("Start Robot", "start"))
-    menu.add_button(DisplayButton("Kill Robot", "kill"))
-    for x in range(5):
-        menu.add_button(DisplayButton("Button " + str(x)))
+# if __name__ == "__main__":
+#     menu = Menu(size=(3, 3))
+#     menu.add_button(DisplayButton("Start Robot", "start"))
+#     menu.add_button(DisplayButton("Kill Robot", "kill"))
+#     for x in range(5):
+#         menu.add_button(DisplayButton("Button " + str(x)))
     

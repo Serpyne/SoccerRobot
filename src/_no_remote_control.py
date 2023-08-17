@@ -38,48 +38,49 @@ def wait(t):
     global tick
     sleep(t)
     tick += t*100
+ir_sensor = IRSeeker360(INPUT_1)
+ultrasonic = UltrasonicSensor(INPUT_3)
+motors = [
+    MediumMotor(OUTPUT_A),      # BACK        [0]
+    MediumMotor(OUTPUT_B),      # LEFT        [1]
+    MediumMotor(OUTPUT_C),      # FRONT       [2]
+    MediumMotor(OUTPUT_D)       # RIGHT       [3]
+]
+compass = Sensor(driver_name="ht-nxt-compass", address=INPUT_2)
+
+compass.mode = "COMPASS"
+compass_angle = 0
+original_angle = compass.value()
+angle = strength = None
+original_pos = [0, 0]
+pos = [0, 0]
+vel = [0, 0]
 
 def main_():
-    global tick, direction
+    global tick, direction, original_pos, pos, vel, compass, motors, ultrasonic, ir_sensor, compass_angle, original_angle, angle, strength
 
+ 
     current_strat = ATTACK
-
-    sensor = IRSeeker360(INPUT_1)
-    ultrasonic = UltrasonicSensor(INPUT_3)
-
-    motors = [
-        MediumMotor(OUTPUT_A),      # BACK        [0]
-        MediumMotor(OUTPUT_B),      # LEFT        [1]
-        MediumMotor(OUTPUT_C),      # FRONT       [2]
-        MediumMotor(OUTPUT_D)       # RIGHT       [3]
-    ]
-    compass = Sensor(driver_name="ht-nxt-compass", address=INPUT_2)
-    compass.mode = "COMPASS"
-    compass_angle = 0
-    original_angle = compass.value()
-
-    data = json.load(open(join(dirname(__file__), "./options.json")))
-
     car_orientation = 0
     global_angle = 0
     angle = strength = None
     see_ball = False
     view_distance = None
-
     done_defense = False
 
-    original_pos = [0, 0]
-    pos = [0, 0]
-    vel = [0, 0]
-
-    display_menu = Menu((3, 3))
-
+    # display_menu = Menu((2, 2))
+    # display_menu.add_button(DisplayButton("Start Robot", "start", (0, 0)))
+    # display_menu.add_button(DisplayButton("Stop Robot", None, (display_menu.button_size[0], 0)))
+    # display_menu.add_button(DisplayButton("Kill Robot", "kill", (0, display_menu.button_size[1])))
+    # for x in range(2):
+    #     display_menu.add_button(DisplayButton("Button " + str(x)))
+    
     while True:
-        if display_menu.command == "start":
+        if 1: #display_menu.command == "start":
             compass_angle = compass.value() - original_angle                             # read compass sensor
             car_orientation = radians(compass_angle)
 
-            angle, strength = sensor.read()                                              # read ir seeker angle + strength
+            angle, strength = ir_sensor.read()                                              # read ir seeker angle + strength
             a = (angle % 12) * pi/6
             global_angle = a + car_orientation                                           # angle of ball in global scene
             see_ball = False
@@ -92,6 +93,7 @@ def main_():
             # PSEUDOCODE
 
             if current_strat == ATTACK:                                                  # attacking mode
+                
                 done_defense = False
                 if see_ball:                                                             # if the robot detects the ball (strength > 0)
                     if global_angle > 3*pi/2 and global_angle < pi/2:                    # if the ball is in front of the car
@@ -173,66 +175,80 @@ def main_():
                 if see_ball:
                     current_strat = ATTACK
 
-            if direction:                         # direction -> movement vector
-                vel[0] = cos(direction) * 720
-                vel[1] = sin(direction) * 720
-            else:                                 # if direction is None, set vel to 0 vector
-                vel[0] = 0
-                vel[1] = 0
+def movement_thread():
+    global tick, motors, direction, vel, pos
+    # move(radians(tick*3))
+    if direction:                         # direction -> movement vector
+        vel[0] = cos(direction) * 720
+        vel[1] = sin(direction) * 720
+    else:                                 # if direction is None, set vel to 0 vector
+        vel[0] = 0
+        vel[1] = 0
 
-            # handling holonomic motor system
-            if vel[0] == 0:
-                motors[0].stop()
-                motors[2].stop()
-            elif vel[0] < 0:
-                motors[0].polarity = "normal"
-                motors[2].polarity = "inversed"
-                motors[0].run_forever(speed_sp=abs(vel[0]))
-                motors[2].run_forever(speed_sp=abs(vel[0]))
-            elif vel[0] > 0:
-                motors[0].polarity = "inversed"
-                motors[2].polarity = "normal"
-                motors[0].run_forever(speed_sp=vel[0])
-                motors[2].run_forever(speed_sp=vel[0])
+    # handling holonomic motor system
+    if vel[0] == 0:
+        motors[0].stop()
+        motors[2].stop()
+    elif vel[0] < 0:
+        motors[0].polarity = "normal"
+        motors[2].polarity = "inversed"
+        motors[0].run_forever(speed_sp=abs(vel[0]))
+        motors[2].run_forever(speed_sp=abs(vel[0]))
+    elif vel[0] > 0:
+        motors[0].polarity = "inversed"
+        motors[2].polarity = "normal"
+        motors[0].run_forever(speed_sp=vel[0])
+        motors[2].run_forever(speed_sp=vel[0])
 
-            if vel[1] == 0:
-                motors[1].stop()
-                motors[3].stop()
-            elif vel[1] < 0:
-                motors[1].polarity = "normal"
-                motors[3].polarity = "inversed"
-                motors[1].run_forever(speed_sp=abs(vel[1]))
-                motors[3].run_forever(speed_sp=abs(vel[1]))
-            elif vel[1] > 0:
-                motors[1].polarity = "inversed"
-                motors[3].polarity = "normal"
-                motors[1].run_forever(speed_sp=vel[1])
-                motors[3].run_forever(speed_sp=vel[1])
+    if vel[1] == 0:
+        motors[1].stop()
+        motors[3].stop()
+    elif vel[1] < 0:
+        motors[1].polarity = "normal"
+        motors[3].polarity = "inversed"
+        motors[1].run_forever(speed_sp=abs(vel[1]))
+        motors[3].run_forever(speed_sp=abs(vel[1]))
+    elif vel[1] > 0:
+        motors[1].polarity = "inversed"
+        motors[3].polarity = "normal"
+        motors[1].run_forever(speed_sp=vel[1])
+        motors[3].run_forever(speed_sp=vel[1])
 
-            translated_compass_angle = (compass_angle + 45) % 360                                                     # translate angle to correction
-            if translated_compass_angle > 8 and translated_compass_angle < 352:                                       # if its in the correct angle already stop
-                for m in motors:                                                                                      
-                    m.stop()
-            else:                                                                                                     # if its not the right orientation
-                for m in motors:                                                                                      # set all four motors to rotate in the direction of the correction
-                    if translated_compass_angle > 180:
-                        m.polarity = "inversed"
-                    elif translated_compass_angle <= 180:
-                        m.polarity = "normal"
-                    m.run_forever(speed_sp=[0, 180][translated_compass_angle>180] - (translated_compass_angle % 180)) # one rotation = 23.9cm travelled
+    wait(.1)
 
-            pos[0] += vel[0]
-            pos[1] += vel[1]
+    translated_compass_angle = (compass_angle + 45) % 360                                                     # translate angle to correction
+    if not (translated_compass_angle > 8 and translated_compass_angle < 352):                                       # if its in the correct angle already stop
+        # for m in motors:                                                                                      
+        #     m.stop()
+    # else:                                                                                                     # if its not the right orientation
+        for m in motors:                                                                                      # set all four motors to rotate in the direction of the correction
+            if translated_compass_angle > 180:
+                m.polarity = "inversed"
+            elif translated_compass_angle <= 180:
+                m.polarity = "normal"
+            m.run_forever(speed_sp=[0, 180][translated_compass_angle>180] - (translated_compass_angle % 180)) # one rotation = 23.9cm travelled
 
-        if (tick % 5) == 0 and display_menu.active: # display menu
-            display_menu.update()
+    pos[0] += vel[0]
+    pos[1] += vel[1]
+
+        # if (tick % 5) == 0: # display menu
+        #     display_menu.update()
     
-        if display_menu.command == "kill":          # display menu quit button
-            break
+        #     if display_menu.command == "kill":          # display menu quit button
+        #         break
 
-        sleep(0.01)
-        tick += 1
+    sleep(0.01)
+    tick += 1
 
-    sensor.close()
+ir_sensor.close()
 
-main_()
+threads = [
+    threading.Thread(target=main_),
+    threading.Thread(target=movement_thread)
+]
+
+for t in threads:
+    t.start()
+
+for t in threads:
+    t.join()

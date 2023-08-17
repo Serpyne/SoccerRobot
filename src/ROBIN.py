@@ -91,7 +91,7 @@ angle = strength = None
 
 def main_():
     """Main loop which controls the button press, and getting the compass and colour sensor values."""
-    global gyro_angle, sensed_colour, angle, strength, vel, pos, compass_angle
+    global gyro_angle, sensed_colour, angle, strength, vel, pos, compass_angle, angle, strength, can_press, motors
     while True:
         # Button logic
         if mode == SENSORS:
@@ -149,7 +149,7 @@ def main_():
         sleep(0.01)
 
 def receive():
-    global vel, movement_mode
+    global vel, movement_mode, current_strat, client, leds, mode, movement_mode
     """Deals with most of the requests from the server connection. It sends the values over to the server to show on the GUI"""
     while True:
         try:
@@ -172,9 +172,9 @@ def receive():
                 elif "move" in r:
                     # if movement_mode == MANUAL:
                     vel = [round(float(x), 1) for x in r.split()[1].split(",")]
-                    a = atan2(vel[1], vel[0]) # compass correction
-                    a -= (gyro_angle) * pi/180
-                    vel = [cos(a)*720, sin(a)*720]
+                    # a = atan2(vel[1], vel[0]) # compass correction
+                    # a -= (gyro_angle) * pi/180
+                    # vel = [round(cos(a)*720, 1), round(sin(a)*720, 1)]
                         # client.send(("debug "+str(vel)).encode())
 
             else: break # End loop if the server has closed.
