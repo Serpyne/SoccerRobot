@@ -108,6 +108,7 @@ def main_():
 
         if mode == MOTORS:
             compass_angle = compass.value()
+            print(movement_mode)
             if movement_mode == AUTOMATIC:
                 if current_strat == ATTACK:
                     angle, strength = sensor.read()
@@ -157,7 +158,7 @@ def receive():
             if request:
                 r = request.decode()
                 if "change_movement_mode" in r:
-                    movement_mode = int(r[-1])
+                    movement_mode = (MANUAL, AUTOMATIC)[int(r[-1])]
                     client.send("movement_mode = {}".format(str(movement_mode)).encode())
 
                     # The change_movement_mode state thing controls this. Just controls the LED on the EV3 for now.
@@ -171,10 +172,10 @@ def receive():
 
                 elif "move" in r:
                     # if movement_mode == MANUAL:
-                    vel = [round(float(x), 1) for x in r.split()[1].split(",")]
-                    # a = atan2(vel[1], vel[0]) # compass correction
-                    # a -= (gyro_angle) * pi/180
-                    # vel = [round(cos(a)*720, 1), round(sin(a)*720, 1)]
+                    v = [round(float(x), 1) for x in r.split()[1].split(",")]
+                    a = atan2(v[1], v[0]) # compass correction
+                    a -= (compass_angle) * pi/180
+                    vel = [round(cos(a)*720, 1), round(sin(a)*720, 1)]
                         # client.send(("debug "+str(vel)).encode())
 
             else: break # End loop if the server has closed.

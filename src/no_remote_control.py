@@ -38,6 +38,7 @@ def wait(t):
     global tick
     sleep(t)
     tick += t*100
+    
 ir_sensor = IRSeeker360(INPUT_1)
 ultrasonic = UltrasonicSensor(INPUT_3)
 motors = [
@@ -80,7 +81,8 @@ def main_():
             compass_angle = compass.value() - original_angle                             # read compass sensor
             car_orientation = radians(compass_angle)
 
-            angle, strength = ir_sensor.read()                                              # read ir seeker angle + strength
+            angle, strength = ir_sensor.read()                                             # read ir seeker angle + strength
+            print(angle, strength)
             a = (angle % 12) * pi/6
             global_angle = a + car_orientation                                           # angle of ball in global scene
             see_ball = False
@@ -174,6 +176,7 @@ def main_():
                     
                 if see_ball:
                     current_strat = ATTACK
+    ir_sensor.close()
 
 def movement_thread():
     global tick, motors, direction, vel, pos
@@ -239,8 +242,6 @@ def movement_thread():
 
     sleep(0.01)
     tick += 1
-
-ir_sensor.close()
 
 threads = [
     threading.Thread(target=main_),
