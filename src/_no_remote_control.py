@@ -49,9 +49,9 @@ def main_():
 
     motors = [
         MediumMotor(OUTPUT_A),      # BACK        [0]
-        MediumMotor(OUTPUT_B),      # LEFT       [1]
+        MediumMotor(OUTPUT_B),      # LEFT        [1]
         MediumMotor(OUTPUT_C),      # FRONT       [2]
-        MediumMotor(OUTPUT_D)       # RIGHT        [3]
+        MediumMotor(OUTPUT_D)       # RIGHT       [3]
     ]
     compass = Sensor(driver_name="ht-nxt-compass", address=INPUT_2)
     compass.mode = "COMPASS"
@@ -117,9 +117,6 @@ def main_():
                 else:
                     current_strat = DEFENSE
 
-                if car_orientation:                                                      # if car orientation is detected
-                    vel = [cos(direction)*720, sin(direction)*720]           # set vel to vector of direction angle
-
             elif current_strat == DEFENSE:                                               # defending mode
                 # if (tick % 50) == 0:                                                     # every 500 ms
                 #     a = atan2(original_pos[1]-pos[1], original_pos[0]-pos[0])            
@@ -176,13 +173,14 @@ def main_():
                 if see_ball:
                     current_strat = ATTACK
 
-            if direction:
+            if direction:                         # direction -> movement vector
                 vel[0] = cos(direction) * 720
                 vel[1] = sin(direction) * 720
-            else:
+            else:                                 # if direction is None, set vel to 0 vector
                 vel[0] = 0
                 vel[1] = 0
 
+            # handling holonomic motor system
             if vel[0] == 0:
                 motors[0].stop()
                 motors[2].stop()
