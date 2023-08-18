@@ -27,6 +27,7 @@ class Robot:
     def __init__(self):
         self.gameplay_mode = ATTACK
 
+        # Initialise Sensors
         self.ir_sensor = IRSeeker360(INPUT_1)
         self.compass_sensor = CompassSensor(driver_name="ht-nxt-compass", address=INPUT_2)
         self.us_sensors = {"x": UltrasonicSensor(INPUT_3),
@@ -38,14 +39,15 @@ class Robot:
             MediumMotor(OUTPUT_D)  # LEFT   [3]
         ]
 
+        # Calibrate compass sensor
         self.compass_sensor.command = "BEGIN-CAL"
         self.compass_sensor.command = "END-CAL"
 
         self.orientation = 0
         self.original_orientation = 0
+
         self.move_direction = None
         self.move_speed = None
-        self.tick = 0
 
         self.see_ball = False
         self.global_ball_angle = None
@@ -53,10 +55,13 @@ class Robot:
         self.pos = [0, 0]
         self.vel = [0, 0]
 
+        self.tick = 0
+
+        # Initialise screen menu
         self.display_menu = Menu((2, 2))
         self.display_menu.add_button(DisplayButton("Start Robot", "start", (0, 0)))
-        self.display_menu.add_button(DisplayButton("Stop Robot", None, (display_menu.button_size[0], 0)))
-        self.display_menu.add_button(DisplayButton("Kill Robot", "kill", (0, display_menu.button_size[1])))
+        self.display_menu.add_button(DisplayButton("Stop Robot", None, (self.display_menu.button_size[0], 0)))
+        self.display_menu.add_button(DisplayButton("Kill Robot", "kill", (0, self.display_menu.button_size[1])))
 
     def move(self, angle, speed=100):
         if angle:
@@ -67,7 +72,7 @@ class Robot:
         self.move_direction = None
         self.move_speed = None
 
-    def wait(self, ms):
+    def wait(self, ms: int):
         """sleep(n ms) and tick(n)"""
         sleep(ms * .001)
         self.tick += ms
@@ -93,12 +98,13 @@ class Robot:
 
     def update(self):
         if (self.tick % 160) == 0: # Get sensor values every 160ms
-            self.compass_sensor.angle = self.compass_sensor.value() - self.original_orientation                             # read compass sensor
+            self.compass_sensor.angle = self.compass_sensor.value() - self.original_orientation
             self.orientation = radians(self.compass_sensor.angle)
 
-            self.relative_ball_angle, self.ball_strength = self.ir_sensor.read()                                             # read ir seeker angle + strength
+            self.relative_ball_angle, self.ball_strength = self.ir_sensor.read()
             self.relative_ball_angle_radians = (self.relative_ball_angle % 12) * pi/6
-            self.global_ball_angle = (self.relative_ball_angle_radians + self.orientation) % (2*pi)                                           # angle of ball in global scene
+            self.global_ball_angle = (self.relative_ball_angle_radians + self.orientation) % (2*pi)
+            
             self.see_ball = False
             if self.ball_strength > 0:
                 self.see_ball = True
