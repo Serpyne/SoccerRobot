@@ -13,20 +13,20 @@ class Rect:
         return [self.x, self.y, self.w, self.h]
 
 class DisplayButton:
-    def __init__(self, label, command, pos):
+    def __init__(self, label, command, pos, display: Display=None):
         self.label = label
         self.command = command
-        self.pos = pos
-        self.rect = Rect(0, 0, 50, 50)
+        self.pos = list(pos)
+        self.size = (50, 50)
+        self.display_surface = display
 
-    def update(self, screen: Display, fill=False):
-        screen.draw.rectangle(xy=self.rect.pos, fill="white black".split()[bool(fill)])
-
+    def update(self, fill=False):
+        self.display_surface.draw.rectangle(xy=(self.pos[0], self.pos[1], self.pos[0]+self.size[0], self.pos[1]+self.size[1]), fill="white black".split()[bool(fill)])
         text_pos = [
-            self.rect.x + self.rect.w//2 - int(len(self.label) / 2 * 3),
-            self.rect.y + self.rect.h//2 - len(self.label.split(" ")) * 6
+            self.pos[0] + self.size[0]//2 - int(len(self.label) / 2 * 6),
+            self.pos[1] + self.size[1]//2 - 6
         ]
-        screen.draw.text(text=self.label, xy=text_pos, fill="black white".split()[bool(fill)], align="center")
+        self.display_surface.draw.text(text=self.label, xy=text_pos, fill="black white".split()[bool(fill)], align="center")
 
 class Menu:
     def __init__(self, size):
@@ -34,7 +34,7 @@ class Menu:
         self.controls = Button()
 
         self.size = size
-        self.buttons  = []
+        self.buttons = []
         self.button_size = (self.screen.xres//self.size[0], self.screen.yres//self.size[1])
 
         self.cursor_index = 0
@@ -48,8 +48,6 @@ class Menu:
         if self.controls.backspace: 
             return
 
-        self.screen.clear()
-
         if self.controls.right: self.cursor_index += 1
         elif self.controls.left: self.cursor_index -= 1
         
@@ -61,17 +59,25 @@ class Menu:
         if self.controls.enter:
             self.command = self.buttons[self.cursor_index].command
 
+        self.controls.process()
+
+        self.controls.wait_for_released(self.controls.buttons_pressed)
+
+        # sleep(0.05)
+
+    def draw(self):
+
+        self.screen.clear()
+
         for i, button in enumerate(self.buttons): # draw buttons
-            button.update(self.screen, self.cursor_index == i)
+            button.update(self.cursor_index == i)
 
         self.screen.update()
 
-        self.buttons.process()
-
-        self.buttons.wait_for_released(self.buttons.buttons_pressed)
-
     def add_button(self, button: DisplayButton):
-        button.rect = Rect(button.pos[0], button.pos[1], self.button_size[0], self.button_size[1])
+        if button.display_surface == None:
+            button.display_surface = self.screen
+        button.size = (self.button_size[0], self.button_size[1])
         self.buttons.append(button)
 
 # if __name__ == "__main__":
