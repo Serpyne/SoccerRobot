@@ -62,6 +62,9 @@ class Robot:
         self.see_ball = False
         self.global_ball_angle = None
 
+        self.dx = self.dy = None
+        self.dist_to_wall = None
+
         self.pos = [0, 0]
         self.vel = [0, 0]
 
@@ -116,20 +119,18 @@ class Robot:
         for t in threads:
             t.start()
 
-        for t in threads:
-            t.join()
-
     def update_loop(self):
         self.original_orientation = self.compass_sensor.value()
 
         while self.active:
             self.update()
 
+        print("Stopping")
         self.ir_sensor.close()
         return
 
-    def update(self) -> bool:
-        if (self.tick % 160) == 0: # Get sensor values every 160ms
+    def update(self):
+        if (self.tick % 250) == 0: # Get sensor values every 160ms
             self.compass_sensor.angle = self.compass_sensor.value() - self.original_orientation
             self.orientation = radians(self.compass_sensor.angle) % (2*pi)
 
@@ -141,32 +142,23 @@ class Robot:
             if self.ball_strength > 0:
                 self.see_ball = True
 
-            dx = self.us_sensors["x"].value()
-            dy = self.us_sensors["y"].value()
+            self.dx = self.us_sensors["x"].value()
+            self.dy = self.us_sensors["y"].value()
 
             if self.orientation == 0:
-                dist_to_wall = dx
+                self.dist_to_wall = self.dx
             elif self.orientated_between(0, pi/4):
-                dist_to_wall = dx * cos(self.orientation)
+                self.dist_to_wall = self.dx * cos(self.orientation)
             elif self.orientated_between(-pi/4, 0):
-                dist_to_wall = dx * cos(abs(2*pi - self.orientation))
+                self.dist_to_wall = self.dx * cos(abs(2*pi - self.orientation))
             else:
-                dist_to_wall = None
+                self.dist_to_wall = None
 
-            if dist_to_wall <= 850:
-                self.move(pi/2)
-            else:
-                self.stop()
-
-            self.pos[0] = dx
-            self.pos[1] = dy
-
-        # self.gameplay()
+            print(str(self.ball_strength))
+            self.gameplay()
         
-        # if (self.tick % 160) == 0: # display menu
-        #     self.display_menu.draw()
+            # self.display_menu.draw()
 
-        print(str(dist_to_wall))
         self.wait(10)
 
     def menu_loop(self):
@@ -178,8 +170,19 @@ class Robot:
     def gameplay(self):
         if self.gameplay_mode == ATTACK:
             self.move(pi)
+
+            if not self.see_ball:
+                self.gameplay_mode = DEFENSE
+
         elif self.gameplay_mode == DEFENSE:
-            self.move(0)
+            if self.dist_to_wall <= 850:
+                self.move(pi/2)
+            else:
+                self.stop()
+
+
+            if self.see_ball:
+                self.gameplay_mode = ATTACK
 
     def movement_loop(self):
         while self.active:
@@ -226,7 +229,7 @@ class Robot:
             self.stop_all_motors()
             return
         
-        sleep(.05)
+        sleep(.1)
 
 if __name__ == "__main__":
     robot = Robot()
