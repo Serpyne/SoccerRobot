@@ -71,13 +71,16 @@ class Robot:
         self.tick = 0
         self.active = True
 
+        self.at_goal = False
+        self.defense_going_back = False
+
         self.detection_extent = radians(35)
 
     def move(self, angle, speed=1080):
         """Set move direction and speed of robot"""
 
         if angle != None:
-            self.move_direction = angle % (2*pi)
+            self.move_direction = (angle - self.orientation) % (2*pi)
             self.move_speed = speed
 
     def stop(self):
@@ -132,7 +135,7 @@ class Robot:
         return
 
     def update(self):
-        if (self.tick % 250) == 0: # Get sensor values every 160ms
+        if (self.tick % 100) == 0: # Get sensor values every 160ms
             self.compass_sensor.angle = self.compass_sensor.value() - self.original_orientation
             self.orientation = radians(self.compass_sensor.angle) % (2*pi)
 
@@ -141,8 +144,8 @@ class Robot:
             self.global_ball_angle = (self.relative_ball_angle_radians + self.orientation) % (2*pi)
             
             self.see_ball = False
-            if self.ball_strength > 0:
-                self.see_ball = True
+            # if self.ball_strength > 3:
+            #     self.see_ball = True
 
             self.dx = self.us_sensors["x"].value()
             self.dy = self.us_sensors["y"].value()
@@ -157,10 +160,25 @@ class Robot:
                 self.dist_to_wall = None
 
             self.gameplay()
+
+            if self.move_direction == None or self.move_speed == None:
+                self.correct_rotation(0)
         
             # self.display_menu.draw()
 
         self.wait(10)
+
+    def correct_rotation(self, angle):
+        a = (self.orientation - angle)
+        if a < pi and a > self.detection_extent:
+            polarity = "normal"
+        elif a >= pi and a < 2*pi - self.detection_extent:
+            polarity = "inversed"
+        else:
+            return
+        for i, m in enumerate(self.motors):
+            self.motors[i].polarity = polarity
+            self.motors[i].run_forever(speed_sp=1080)
 
     def menu_loop(self):
         self.display_menu.update()
@@ -169,37 +187,54 @@ class Robot:
             self.active = False
 
     def gameplay(self):
-        print((str(round((self.global_ball_angle) * 180/pi)) + "    ")[:5] + (str(round((self.orientation) * 180/pi)) + "    ")[:5])
+        # print((str(round((self.global_ball_angle) * 180/pi)) + "    ")[:5] + (str(round((self.orientation) * 180/pi)) + "    ")[:5])
         if self.gameplay_mode == ATTACK:
 
             if self.global_ball_angle > 3*pi/2 or self.global_ball_angle < pi/2: # if in front half
 
                 if self.global_ball_angle > 2*pi-self.detection_extent or self.global_ball_angle < self.detection_extent: # if directly in front
-                    self.move(0) # move forward
-                else: # if not directly in front but in the front half
-                    # self.move(pi/2 + pi*int(self.global_ball_angle < pi)) # move right or left depending on ball direction
-                    if self.global_ball_angle < pi:
-                        self.move(pi/2)
-                    else:
-                        self.move(3*pi/2)
+                    self.move(self.relative_ball_angle_radians)
+                #     self.move(0) # move forward
+                # else: # if not directly in front but in the front half
+                #     if self.global_ball_angle < pi:
+                #         self.move(pi/2)
+                #     else:
+                #         self.move(3*pi/2)
 
             else: # if in back half
 
                 if self.global_ball_angle > pi-self.detection_extent and self.global_ball_angle < pi+self.detection_extent: # if directly behind
-                    self.move(pi/2) # hardcoded move out of the way
+                    self.move(3*pi/2) # hardcoded move out of the way
                 else:
                     self.move(pi) # move straight back
 
-            # if not self.see_ball:
-            #     self.gameplay_mode = DEFENSE
+            if not self.see_ball:
+                self.gameplay_mode = DEFENSE
 
         elif self.gameplay_mode == DEFENSE:
             if self.dist_to_wall <= 850:
-                self.move(pi/2 - self.orientation)
+                self.move(pi/2)
             else:
-                self.stop()
+                if self.at_goal:
+                    self.stop()
+                else:
+                    self.move(pi)
+                    self.stalled_motors = ["overloaded" in x.state for x in self.motors]
+                    if self.defense_going_back:
+                        if True in self.stalled_motors:
+                            self.move(0)
+                            self.wait(50)
+                            self.at_goal = True
+                    else:
+                        if not self.stalled_motors:
+                            self.stop()
+                            self.correct_rotation(0)
+                            self.wait(1000)
+                            self.defense_going_back = True
 
             if self.see_ball:
+                self.at_goal = False
+                self.defense_going_back = False
                 self.gameplay_mode = ATTACK
 
     def movement_loop(self):
