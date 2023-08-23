@@ -71,7 +71,9 @@ class Robot:
         self.tick = 0
         self.active = True
 
-    def move(self, angle, speed=720):
+        self.detection_extent = radians(35)
+
+    def move(self, angle, speed=1080):
         """Set move direction and speed of robot"""
 
         if angle != None:
@@ -154,7 +156,6 @@ class Robot:
             else:
                 self.dist_to_wall = None
 
-            print(str(self.ball_strength))
             self.gameplay()
         
             # self.display_menu.draw()
@@ -168,18 +169,35 @@ class Robot:
             self.active = False
 
     def gameplay(self):
+        print((str(round((self.global_ball_angle) * 180/pi)) + "    ")[:5] + (str(round((self.orientation) * 180/pi)) + "    ")[:5])
         if self.gameplay_mode == ATTACK:
-            self.move(pi)
 
-            if not self.see_ball:
-                self.gameplay_mode = DEFENSE
+            if self.global_ball_angle > 3*pi/2 or self.global_ball_angle < pi/2: # if in front half
+
+                if self.global_ball_angle > 2*pi-self.detection_extent or self.global_ball_angle < self.detection_extent: # if directly in front
+                    self.move(0) # move forward
+                else: # if not directly in front but in the front half
+                    # self.move(pi/2 + pi*int(self.global_ball_angle < pi)) # move right or left depending on ball direction
+                    if self.global_ball_angle < pi:
+                        self.move(pi/2)
+                    else:
+                        self.move(3*pi/2)
+
+            else: # if in back half
+
+                if self.global_ball_angle > pi-self.detection_extent and self.global_ball_angle < pi+self.detection_extent: # if directly behind
+                    self.move(pi/2) # hardcoded move out of the way
+                else:
+                    self.move(pi) # move straight back
+
+            # if not self.see_ball:
+            #     self.gameplay_mode = DEFENSE
 
         elif self.gameplay_mode == DEFENSE:
             if self.dist_to_wall <= 850:
-                self.move(pi/2)
+                self.move(pi/2 - self.orientation)
             else:
                 self.stop()
-
 
             if self.see_ball:
                 self.gameplay_mode = ATTACK
