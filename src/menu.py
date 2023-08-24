@@ -63,7 +63,7 @@ class Menu:
 
         self.controls.wait_for_released(self.controls.buttons_pressed)
 
-        # sleep(0.05)
+        sleep(0.05)
 
     def draw(self):
 

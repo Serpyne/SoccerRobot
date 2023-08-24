@@ -74,7 +74,7 @@ class Robot:
         self.at_goal = False
         self.defense_going_back = False
 
-        self.detection_extent = radians(35)
+        self.detection_extent = radians(25)
 
     def move(self, angle, speed=1080):
         """Set move direction and speed of robot"""
@@ -128,14 +128,16 @@ class Robot:
         self.original_orientation = self.compass_sensor.value()
 
         while self.active:
-            self.update()
+            try:
+                self.update()
+            except Exception as e: print("stopped for "+str(e))
 
         print("Stopping")
         self.ir_sensor.close()
         return
 
     def update(self):
-        if (self.tick % 100) == 0: # Get sensor values every 160ms
+        if (self.tick % 20) == 0: # Get sensor values every 20ms
             self.compass_sensor.angle = self.compass_sensor.value() - self.original_orientation
             self.orientation = radians(self.compass_sensor.angle) % (2*pi)
 
@@ -144,27 +146,25 @@ class Robot:
             self.global_ball_angle = (self.relative_ball_angle_radians + self.orientation) % (2*pi)
             
             self.see_ball = False
-            # if self.ball_strength > 3:
-            #     self.see_ball = True
+            if self.ball_strength > 1:
+                self.see_ball = True
 
-            self.dx = self.us_sensors["x"].value()
-            self.dy = self.us_sensors["y"].value()
+            # self.dx = self.us_sensors["x"].value()
+            # self.dy = self.us_sensors["y"].value()
 
-            if self.orientation == 0:
-                self.dist_to_wall = self.dx
-            elif self.orientated_between(0, pi/4):
-                self.dist_to_wall = self.dx * cos(self.orientation)
-            elif self.orientated_between(-pi/4, 0):
-                self.dist_to_wall = self.dx * cos(abs(2*pi - self.orientation))
-            else:
-                self.dist_to_wall = None
+            # if self.orientation == 0:
+            #     self.dist_to_wall = self.dx
+            # elif self.orientated_between(0, pi/4):
+            #     self.dist_to_wall = self.dx * cos(self.orientation)
+            # elif self.orientated_between(-pi/4, 0):
+            #     self.dist_to_wall = self.dx * cos(abs(2*pi - self.orientation))
+            # else:
+            #     self.dist_to_wall = None
 
             self.gameplay()
 
             if self.move_direction == None or self.move_speed == None:
                 self.correct_rotation(0)
-        
-            # self.display_menu.draw()
 
         self.wait(10)
 
@@ -182,6 +182,7 @@ class Robot:
 
     def menu_loop(self):
         self.display_menu.update()
+        self.display_menu.draw()
 
         if self.display_menu.command == "kill":
             self.active = False
@@ -192,50 +193,47 @@ class Robot:
 
             if self.global_ball_angle > 3*pi/2 or self.global_ball_angle < pi/2: # if in front half
 
-                if self.global_ball_angle > 2*pi-self.detection_extent or self.global_ball_angle < self.detection_extent: # if directly in front
-                    self.move(self.relative_ball_angle_radians)
-                #     self.move(0) # move forward
-                # else: # if not directly in front but in the front half
-                #     if self.global_ball_angle < pi:
-                #         self.move(pi/2)
-                #     else:
-                #         self.move(3*pi/2)
+                if self.ball_strength > 80:
+                    self.move(0)
+                else:
+                    if self.global_ball_angle > 2*pi-self.detection_extent or self.global_ball_angle < self.detection_extent: # if directly in front
+                        # self.move(self.relative_ball_angle_radians)
+                        self.move(0) # move forward
+                    else: # if not directly in front but in the front half
+                        if self.global_ball_angle < pi:
+                            self.move(pi/2, speed=720)
+                        else:
+                            self.move(3*pi/2, speed=720)
 
             else: # if in back half
 
-                if self.global_ball_angle > pi-self.detection_extent and self.global_ball_angle < pi+self.detection_extent: # if directly behind
+                if self.global_ball_angle > pi - .3 and self.global_ball_angle < pi + .3: # if directly behind
                     self.move(3*pi/2) # hardcoded move out of the way
                 else:
                     self.move(pi) # move straight back
 
-            if not self.see_ball:
-                self.gameplay_mode = DEFENSE
+        #     if not self.see_ball:
+        #         self.gameplay_mode = DEFENSE
 
-        elif self.gameplay_mode == DEFENSE:
-            if self.dist_to_wall <= 850:
-                self.move(pi/2)
-            else:
-                if self.at_goal:
-                    self.stop()
-                else:
-                    self.move(pi)
-                    self.stalled_motors = ["overloaded" in x.state for x in self.motors]
-                    if self.defense_going_back:
-                        if True in self.stalled_motors:
-                            self.move(0)
-                            self.wait(50)
-                            self.at_goal = True
-                    else:
-                        if not self.stalled_motors:
-                            self.stop()
-                            self.correct_rotation(0)
-                            self.wait(1000)
-                            self.defense_going_back = True
+        # elif self.gameplay_mode == DEFENSE:
+        #     if self.dist_to_wall:
+        #         if self.dist_to_wall <= 850:
+        #             self.move(pi/2)
+        #         else:
+        #             if self.at_goal:
+        #                 self.stop()
+        #             else:
+        #                 self.move(pi)
+        #                 self.overloaded_motors = ["overloaded" in x.state for x in self.motors]
 
-            if self.see_ball:
-                self.at_goal = False
-                self.defense_going_back = False
-                self.gameplay_mode = ATTACK
+        #     if self.see_ball:
+        #         self.at_goal = False
+        #         self.defense_going_back = False
+        #         self.gameplay_mode = ATTACK
+        # if self.see_ball:
+        #     self.move(self.global_ball_angle)
+        # else:
+        #     self.stop()
 
     def movement_loop(self):
         while self.active:
@@ -282,7 +280,7 @@ class Robot:
             self.stop_all_motors()
             return
         
-        sleep(.1)
+        sleep(.005)
 
 if __name__ == "__main__":
     robot = Robot()
