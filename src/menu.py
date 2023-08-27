@@ -48,16 +48,19 @@ class Menu:
         if self.controls.backspace: 
             return
 
-        if self.controls.right: self.cursor_index += 1
-        elif self.controls.left: self.cursor_index -= 1
+        # if self.controls.right: self.cursor_index += 1
+        # elif self.controls.left: self.cursor_index -= 1
         
-        if self.controls.up: self.cursor_index += self.size[0]
-        if self.controls.down: self.cursor_index -= self.size[0]
+        # if self.controls.up: self.cursor_index += self.size[0]
+        # if self.controls.down: self.cursor_index -= self.size[0]
 
-        self.cursor_index = (self.cursor_index % len(self.buttons))
+        # self.cursor_index = (self.cursor_index % len(self.buttons))
 
         if self.controls.enter:
-            self.command = self.buttons[self.cursor_index].command
+            self.command = not self.command
+            while self.controls.enter:
+                self.controls.process()
+                sleep(0.01)
 
         self.controls.process()
 

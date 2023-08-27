@@ -32,8 +32,8 @@ class Robot:
         # Initialise Sensors and Motors
         self.ir_sensor = IRSeeker360(INPUT_1)
         self.compass_sensor = CompassSensor(driver_name="ht-nxt-compass", address=INPUT_2)
-        self.us_sensors = {"x": UltrasonicSensor(INPUT_3),
-                           "y": UltrasonicSensor(INPUT_4)}
+        # self.us_sensors = {"x": UltrasonicSensor(INPUT_3),
+        #                    "y": UltrasonicSensor(INPUT_4)}
         
         self.motors = [
             MediumMotor(OUTPUT_A), # LEFT    [0]
@@ -69,7 +69,7 @@ class Robot:
         self.vel = [0, 0]
 
         self.tick = 0
-        self.active = True
+        self.active = False
 
         self.at_goal = False
         self.defense_going_back = False
@@ -127,10 +127,13 @@ class Robot:
     def update_loop(self):
         self.original_orientation = self.compass_sensor.value()
 
-        while self.active:
-            try:
-                self.update()
-            except Exception as e: print("stopped for "+str(e))
+        while True:
+            if self.active:
+                try:
+                    self.update()
+                except Exception as e:
+                    print("stopped for "+str(e))
+                    break
 
         print("Stopping")
         self.ir_sensor.close()
@@ -181,11 +184,14 @@ class Robot:
             self.motors[i].run_forever(speed_sp=1080)
 
     def menu_loop(self):
-        self.display_menu.update()
-        self.display_menu.draw()
+        while True:
+            self.display_menu.update()
+            self.display_menu.draw()
 
-        if self.display_menu.command == "kill":
-            self.active = False
+            if self.display_menu.command:
+                self.active = True
+            else:
+                self.active = False
 
     def gameplay(self):
         # print((str(round((self.global_ball_angle) * 180/pi)) + "    ")[:5] + (str(round((self.orientation) * 180/pi)) + "    ")[:5])
@@ -236,8 +242,9 @@ class Robot:
         #     self.stop()
 
     def movement_loop(self):
-        while self.active:
-            self.movement()
+        while True:
+            if self.active:
+                self.movement()
         else: return
 
     def stop_all_motors(self):
