@@ -30,21 +30,21 @@ class Robot:
         self.gameplay_mode = ATTACK
 
         # Initialise Sensors and Motors
-        self.ir_sensor = IRSeeker360(INPUT_1)
-        self.compass_sensor = CompassSensor(driver_name="ht-nxt-compass", address=INPUT_2)
+        # self.ir_sensor
+        # = CompassSensor(driver_name="ht-nxt-compass", address=INPUT_2)
         # self.us_sensors = {"x": UltrasonicSensor(INPUT_3),
         #                    "y": UltrasonicSensor(INPUT_4)}
         
         self.motors = [
-            MediumMotor(OUTPUT_A), # LEFT    [0]
-            MediumMotor(OUTPUT_B), # FRONT   [1]
-            MediumMotor(OUTPUT_C), # RIGHT   [2]
-            MediumMotor(OUTPUT_D)  # BACK    [3]
+            MediumMotor(OUTPUT_A) # LEFT    [0]
+            # MediumMotor(OUTPUT_B), # FRONT   [1]
+            # MediumMotor(OUTPUT_C), # RIGHT   [2]
+            # MediumMotor(OUTPUT_D)  # BACK    [3]
         ]
 
         # Calibrate compass sensor
-        self.compass_sensor.command = "BEGIN-CAL"
-        self.compass_sensor.command = "END-CAL"
+        # self.compass_sensor.command = "BEGIN-CAL"
+        # self.compass_sensor.command = "END-CAL"
 
         # Initialise screen menu
         self.display_menu = Menu((2, 2))
@@ -69,7 +69,7 @@ class Robot:
         self.vel = [0, 0]
 
         self.tick = 0
-        self.active = 1
+        self.active = True
 
         self.at_goal = False
         self.defense_going_back = False
@@ -116,7 +116,7 @@ class Robot:
         """Run(): Start threads for robot"""
 
         threads = [
-            threading.Thread(target=self.update_loop),
+            # threading.Thread(target=self.update_loop),
             threading.Thread(target=self.movement_loop),
             threading.Thread(target=self.menu_loop)
         ]
@@ -185,15 +185,13 @@ class Robot:
 
     def menu_loop(self):
         while True:
+            self.display_menu.update()
+            # self.display_menu.draw()
+
             if self.display_menu.command:
                 self.active = True
             else:
                 self.active = False
-            print(str(self.active))
-            
-            self.display_menu.update()
-            # self.display_menu.draw()
-
 
     def gameplay(self):
         # print((str(round((self.global_ball_angle) * 180/pi)) + "    ")[:5] + (str(round((self.orientation) * 180/pi)) + "    ")[:5])
@@ -228,39 +226,12 @@ class Robot:
 
     def stop_all_motors(self):
         self.motors[0].stop()
-        self.motors[1].stop()
-        self.motors[2].stop()
-        self.motors[3].stop()
+        # self.motors[1].stop()
+        # self.motors[2].stop()
+        # self.motors[3].stop()
 
     def movement(self):
-        if self.move_direction == None or self.move_speed == None:
-            self.stop_all_motors()
-        else:
-            self.vel[0] = cos(self.move_direction) * self.move_speed
-            self.vel[1] = sin(self.move_direction) * self.move_speed
-
-            if self.vel[0]:
-                if self.vel[0] < 0:
-                    self.motors[0].polarity = "normal"
-                    self.motors[2].polarity = "inversed"
-                    self.motors[0].run_forever(speed_sp=abs(self.vel[0]))
-                    self.motors[2].run_forever(speed_sp=abs(self.vel[0]))
-                elif self.vel[0] > 0:
-                    self.motors[0].polarity = "inversed"
-                    self.motors[2].polarity = "normal"
-                    self.motors[0].run_forever(speed_sp=self.vel[0])
-                    self.motors[2].run_forever(speed_sp=self.vel[0])
-            if self.vel[1]:
-                if self.vel[1] < 0:
-                    self.motors[1].polarity = "normal"
-                    self.motors[3].polarity = "inversed"
-                    self.motors[1].run_forever(speed_sp=abs(self.vel[1]))
-                    self.motors[3].run_forever(speed_sp=abs(self.vel[1]))
-                elif self.vel[1] > 0:
-                    self.motors[1].polarity = "inversed"
-                    self.motors[3].polarity = "normal"
-                    self.motors[1].run_forever(speed_sp=self.vel[1])
-                    self.motors[3].run_forever(speed_sp=self.vel[1])
+        self.motors[0].run_forever(speed_sp=1000)
 
         if not self.active:
             self.stop_all_motors()

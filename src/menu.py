@@ -39,7 +39,7 @@ class Menu:
 
         self.cursor_index = 0
 
-        self.command = None
+        self.command = False
 
         self.active = True
     
@@ -62,20 +62,26 @@ class Menu:
                 self.controls.process()
                 sleep(0.01)
 
+        # self.draw()
+
+        # self.screen.update()
+
         self.controls.process()
 
         self.controls.wait_for_released(self.controls.buttons_pressed)
+
+        # self.screen.clear()
 
         sleep(0.05)
 
     def draw(self):
 
-        self.screen.clear()
+        # self.screen.clear()
 
         for i, button in enumerate(self.buttons): # draw buttons
             button.update(self.cursor_index == i)
 
-        self.screen.update()
+        # self.screen.update()
 
     def add_button(self, button: DisplayButton):
         if button.display_surface == None:
