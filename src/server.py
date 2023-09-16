@@ -91,6 +91,7 @@ class Server:
             try:
                 if self.ready:
                     # print("move " + self.root.movement_str)
+                    
                     client_socket.send(("move " + self.root.movement_str).encode())
             except Exception as e:
                 raise e
@@ -285,9 +286,11 @@ class StartFrame(Frame):
 
         self.js.r = self.calibration_js.angle
         # print("Bot angle: {}; Joystick direction: {}; Moving direction: {}".format(str(round(degrees(self.js.r)) % 360), str(round(degrees(self.js.angle)) % 360), str(round(degrees(self.js.angle + self.js.r)) % 360)))
-        speed = 720
+        speed = 1560
         t = round(self.js.rot[0]*speed, 1), round(self.js.rot[1]*speed, 1)
-        if t[0] != 0 and t[1] != 0:
+        if self.js.m == None:
+            self.movement_str = "0.0,0.0"
+        elif t[0] != 0 and t[1] != 0:
             self.movement_str = str(t[0]) + "," + str(t[1])
 
         self.after(16, self.loop_)

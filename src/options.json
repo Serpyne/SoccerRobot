@@ -1,5 +1,6 @@
 {
     "host_address": "6C:A1:00:05:72:DE",
     "host_port": 4,
-    "wheel_calibration": [1, 1, 1, 1]
+    "wheel_calibration": [1, 1, 1, 1],
+    "gui_theme": "blue"
 }
