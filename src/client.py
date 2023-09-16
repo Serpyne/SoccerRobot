@@ -1,40 +1,45 @@
 #!/usr/bin/env python3
 
+import threading, json, socket
 from time import sleep
-import threading
 from os.path import join, dirname
-from math import pi, cos, sin, atan2, radians, sqrt
+from math import pi, cos, sin, radians
 
 from ev3dev2.motor import MediumMotor, OUTPUT_A, OUTPUT_B, OUTPUT_C, OUTPUT_D
 from ev3dev2.sensor import Sensor, INPUT_1, INPUT_2, INPUT_3, INPUT_4
-from ev3dev2.sensor.lego import UltrasonicSensor
-from ev3dev2.led import Leds
 
 from sensor import IRSeeker360
-from menu import DisplayButton, Menu
 
-ATTACK = 0
-DEFENSE = 1
+DEBUG = None
 
-FIELD_SIZE = [243, 182]
+MAX_SPEED = 1560
+
+class Motor(MediumMotor):
+    def __init__(self, polarity_bias=1, speed_bias=1, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.polarity_bias = abs(polarity_bias)/polarity_bias if polarity_bias != 0 else 1
+        self.speed_bias = max(0.01, min(1, abs(speed_bias)))
+    def run(self, speed):
+        if speed * self.polarity_bias > 0:
+            self.polarity = "normal"
+        elif speed * self.polarity_bias < 0:
+            self.polarity = "inversed"
+        self.run_forever(speed_sp=abs(speed) * self.speed_bias)
 
 class CompassSensor(Sensor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.angle = None
+        self.command = "BEGIN-CAL"
+        self.command = "END-CAL"
 
 class Robot:
     def __init__(self):
         """RoboCup Robot Class"""
 
-        self.gameplay_mode = ATTACK
+        self.ir_sensor = IRSeeker360(INPUT_4)
+        self.compass_sensor = CompassSensor(driver_name="ht-nxt-compass", address=INPUT_3)
 
-        # Initialise Sensors and Motors
-        self.ir_sensor = IRSeeker360(INPUT_1)
-        self.compass_sensor = CompassSensor(driver_name="ht-nxt-compass", address=INPUT_2)
-        # self.us_sensors = {"x": UltrasonicSensor(INPUT_3),
-        #                    "y": UltrasonicSensor(INPUT_4)}
-        
         self.motors = [
             MediumMotor(OUTPUT_A), # LEFT    [0]
             MediumMotor(OUTPUT_B), # FRONT   [1]
@@ -42,17 +47,6 @@ class Robot:
             MediumMotor(OUTPUT_D)  # BACK    [3]
         ]
 
-        # Calibrate compass sensor
-        self.compass_sensor.command = "BEGIN-CAL"
-        self.compass_sensor.command = "END-CAL"
-
-        # Initialise screen menu
-        self.display_menu = Menu((2, 2))
-        self.display_menu.add_button(DisplayButton("Start Robot", "start", (0, 0)))
-        self.display_menu.add_button(DisplayButton("Stop Robot", None, (self.display_menu.button_size[0], 0)))
-        self.display_menu.add_button(DisplayButton("Kill Robot", "kill", (0, self.display_menu.button_size[1])))
-
-        # Variables
         self.orientation = 0
         self.original_orientation = 0
 
@@ -62,19 +56,24 @@ class Robot:
         self.see_ball = False
         self.global_ball_angle = None
 
-        self.dx = self.dy = None
-        self.dist_to_wall = None
-
-        self.pos = [0, 0]
-        self.vel = [0, 0]
-
-        self.tick = 0
-        self.active = 1
+        self.active = False
 
         self.at_goal = False
         self.defense_going_back = False
 
         self.detection_extent = radians(31)
+
+        self.tick = 0
+
+        # client initialisation
+        data = json.load(open(join(dirname(__file__), "./options.json")))
+        target_host = data["host_address"]
+        target_port = data["host_port"]
+
+        self.client = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+        self.client.settimeout(1)
+        self.client.connect((target_host, target_port))
+        print("Connected")
 
     def move(self, angle, speed=1080):
         """Set move direction and speed of robot"""
@@ -110,7 +109,6 @@ class Robot:
                 return True
             else:
                 return False
-            # raise Exception("orientated_between(self, start, end): start has to be less than end.")
 
     def run(self):
         """Run(): Start threads for robot"""
@@ -118,11 +116,20 @@ class Robot:
         threads = [
             threading.Thread(target=self.update_loop),
             threading.Thread(target=self.movement_loop),
-            threading.Thread(target=self.menu_loop)
+            threading.Thread(target=self.request_handler)
         ]
 
         for t in threads:
             t.start()
+
+    def request_handler(self):
+        while True:
+            request = self.client.recv(1024)
+            if request:
+                self.process_request(request.decode())
+
+    def process_request(self, content):
+        match 
 
     def update_loop(self):
         self.original_orientation = self.compass_sensor.value()
@@ -152,73 +159,31 @@ class Robot:
             if self.ball_strength > 1:
                 self.see_ball = True
 
-            # self.dx = self.us_sensors["x"].value()
-            # self.dy = self.us_sensors["y"].value()
-
-            # if self.orientation == 0:
-            #     self.dist_to_wall = self.dx
-            # elif self.orientated_between(0, pi/4):
-            #     self.dist_to_wall = self.dx * cos(self.orientation)
-            # elif self.orientated_between(-pi/4, 0):
-            #     self.dist_to_wall = self.dx * cos(abs(2*pi - self.orientation))
-            # else:
-            #     self.dist_to_wall = None
-
             self.gameplay()
-
-            if self.move_direction == None or self.move_speed == None:
-                self.correct_rotation(0)
 
         self.wait(10)
 
-    def correct_rotation(self, angle):
-        a = (self.orientation - angle)
-        if a < pi and a > self.detection_extent:
-            polarity = "normal"
-        elif a >= pi and a < 2*pi - self.detection_extent:
-            polarity = "inversed"
-        else:
-            return
-        for i, m in enumerate(self.motors):
-            self.motors[i].polarity = polarity
-            self.motors[i].run_forever(speed_sp=1080)
-
-    def menu_loop(self):
-        while True:
-            if self.display_menu.command:
-                self.active = True
-            else:
-                self.active = False
-            print(str(self.active))
-            
-            self.display_menu.update()
-            # self.display_menu.draw()
-
-
     def gameplay(self):
-        # print((str(round((self.global_ball_angle) * 180/pi)) + "    ")[:5] + (str(round((self.orientation) * 180/pi)) + "    ")[:5])
-        if self.gameplay_mode == ATTACK:
+        if self.global_ball_angle > 3*pi/2 or self.global_ball_angle < pi/2: # if in front half
 
-            if self.global_ball_angle > 3*pi/2 or self.global_ball_angle < pi/2: # if in front half
+            if self.ball_strength > 80:
+                self.move(0)
+            else:
+                if self.global_ball_angle > 2*pi-self.detection_extent or self.global_ball_angle < self.detection_extent: # if directly in front
+                    # self.move(self.relative_ball_angle_radians)
+                    self.move(0) # move forward
+                else: # if not directly in front but in the front half
+                    if self.global_ball_angle < pi:
+                        self.move(pi/2, speed=720)
+                    else:
+                        self.move(3*pi/2, speed=720)
 
-                if self.ball_strength > 80:
-                    self.move(0)
-                else:
-                    if self.global_ball_angle > 2*pi-self.detection_extent or self.global_ball_angle < self.detection_extent: # if directly in front
-                        # self.move(self.relative_ball_angle_radians)
-                        self.move(0) # move forward
-                    else: # if not directly in front but in the front half
-                        if self.global_ball_angle < pi:
-                            self.move(pi/2, speed=720)
-                        else:
-                            self.move(3*pi/2, speed=720)
+        else: # if in back half
 
-            else: # if in back half
-
-                if self.global_ball_angle > pi - .3 and self.global_ball_angle < pi + .3: # if directly behind
-                    self.move(3*pi/2) # hardcoded move out of the way
-                else:
-                    self.move(pi) # move straight back
+            if self.global_ball_angle > pi - .3 and self.global_ball_angle < pi + .3: # if directly behind
+                self.move(3*pi/2) # hardcoded move out of the way
+            else:
+                self.move(pi) # move straight back
 
     def movement_loop(self):
         while True:
@@ -236,31 +201,32 @@ class Robot:
         if self.move_direction == None or self.move_speed == None:
             self.stop_all_motors()
         else:
-            self.vel[0] = cos(self.move_direction) * self.move_speed
-            self.vel[1] = sin(self.move_direction) * self.move_speed
+            vel = [0, 0]
+            vel[0] = cos(self.move_direction) * self.move_speed
+            vel[1] = sin(self.move_direction) * self.move_speed
 
-            if self.vel[0]:
-                if self.vel[0] < 0:
+            if vel[0]:
+                if vel[0] < 0:
                     self.motors[0].polarity = "normal"
                     self.motors[2].polarity = "inversed"
-                    self.motors[0].run_forever(speed_sp=abs(self.vel[0]))
-                    self.motors[2].run_forever(speed_sp=abs(self.vel[0]))
-                elif self.vel[0] > 0:
+                    self.motors[0].run_forever(speed_sp=abs(vel[0]))
+                    self.motors[2].run_forever(speed_sp=abs(vel[0]))
+                elif vel[0] > 0:
                     self.motors[0].polarity = "inversed"
                     self.motors[2].polarity = "normal"
-                    self.motors[0].run_forever(speed_sp=self.vel[0])
-                    self.motors[2].run_forever(speed_sp=self.vel[0])
-            if self.vel[1]:
-                if self.vel[1] < 0:
+                    self.motors[0].run_forever(speed_sp=vel[0])
+                    self.motors[2].run_forever(speed_sp=vel[0])
+            if vel[1]:
+                if vel[1] < 0:
                     self.motors[1].polarity = "normal"
                     self.motors[3].polarity = "inversed"
-                    self.motors[1].run_forever(speed_sp=abs(self.vel[1]))
-                    self.motors[3].run_forever(speed_sp=abs(self.vel[1]))
-                elif self.vel[1] > 0:
+                    self.motors[1].run_forever(speed_sp=abs(vel[1]))
+                    self.motors[3].run_forever(speed_sp=abs(vel[1]))
+                elif vel[1] > 0:
                     self.motors[1].polarity = "inversed"
                     self.motors[3].polarity = "normal"
-                    self.motors[1].run_forever(speed_sp=self.vel[1])
-                    self.motors[3].run_forever(speed_sp=self.vel[1])
+                    self.motors[1].run_forever(speed_sp=vel[1])
+                    self.motors[3].run_forever(speed_sp=vel[1])
 
         if not self.active:
             self.stop_all_motors()

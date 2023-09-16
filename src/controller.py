@@ -1,4 +1,5 @@
-import socket, time, json, threading, sys
+import socket, json, threading, sys
+from time import sleep
 from customtkinter import *
 from tkinter import messagebox
 from os.path import join, dirname
@@ -6,67 +7,176 @@ from os.path import join, dirname
 def read_options() -> dict:
     return json.load(open(join(dirname(__file__), "./options.json"), "r"))
 
+def write_options(obj):
+    data = read_options()
+    try:
+        json.dump(obj, open(join(dirname(__file__), "./options.json"), "w"), sort_keys=True, indent=4)
+    except:
+        json.dump(data, open(join(dirname(__file__), "./options.json"), "w"), sort_keys=True, indent=4)
+        raise
+
+class App(CTk):
+    def __init__(self):
+        super().__init__()
+
+        self.geometry("1280x720")
+        self.title("Soccer Robots Controllor")
+
+        self.current_ui = []
+        self.pending_labels = [
+            CTkLabel(master=self, text="Waiting for connection..."),
+            CTkLabel(master=self, text="Waiting for connection...")
+        ]
+
+        self.main_content = MainFrame(self, self.change_theme)
+        self.current_ui.append(self.main_content)
+
+        self.pending_labels[0].place(relwidth=0.5, relheight=1, relx=0, rely=0)
+        self.pending_labels[1].place(relwidth=0.5, relheight=1, relx=0.5, rely=0)
+        [pl.lift() for pl in self.pending_labels]
+
+        self.server = Server(master=self, host_addr = data["host_address"], host_port = data["host_port"])
+
+        self.thread = threading.Thread(target=self.server.run)
+
+        self.after(50, self.thread.start)
+        self.after(50, self.update)
+
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def update(self):
+        if not self.server.active:
+            sys.exit()
+        self.after(50, self.update)
+
+    def on_closing(self):
+        if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            for client in self.server.clients:
+                client.close()
+            self.server.close()
+            self.destroy()
+            sys.exit()
+
+    def reset_current_ui(self):
+        for widget in self.current_ui:
+            widget.destroy()
+        self.main_content = MainFrame(self, self.change_theme)
+        self.main_content.pack(expand=True, fill=BOTH)
+        self.current_ui.append(self.main_content)
+
+    def change_theme(self, theme_name):
+        data = read_options()
+        if theme_name != data["gui_theme"]:
+            data["gui_theme"] = theme_name
+            write_options(data)
+
+            set_default_color_theme(theme_name.lower())
+            self.reset_current_ui()
+            self.main_content.themes_frame.place(relx=0, rely=1, anchor="sw")
+            self.main_content.themes_frame.lift()
+
 class Server:
-    def __init__(self, host_addr, host_port):
-        self.addr = host_addr
-        self.port = host_port
-        self.backlog = 1
+    def __init__(self, master: App, host_addr, host_port):
+        self.parent: App = master
+
+        self.active = True
+
+        self.addr = "127.0.0.1"
+        self.port = 8080
+        # self.addr = host_addr
+        # self.port = host_port
         self.size = 1024
 
-        self.server = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # self.server = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
         self.server.bind((self.addr, self.port))
-        self.server.listen(self.backlog)
+        self.server.listen(1) # Only two connections allowed
         print("Server is listening on %s:%d" % (self.addr, self.port))
-
-        self.client = None
+        
+        self.clients = []
 
     def run(self):
-        try:
-            self.client, addr = self.server.accept()
-        except OSError: return 0
-        except: raise
+        while len(self.parent.pending_labels) > 0:
+            try:
+                client, addr = self.server.accept()
+                t = threading.Thread(target=self.on_new_client, args=(client, addr))
+                t.start()
+                if len(self.clients) == 2:
+                    self.parent.main_content.themes_frame.place(relx=0, rely=1, anchor="sw")
+
+            except OSError: return 0
+            except: raise
+
+            sleep(0.01)
+    
+    def on_new_client(self, client, addr):
+        self.clients.append(client)
         
+        if len(self.parent.pending_labels) == 2:
+            self.parent.main_content.pack(expand=True, fill=BOTH)
+        self.parent.pending_labels[0].destroy()
+        self.parent.pending_labels.pop(0)
+
         print("Client connected " + str(addr))
 
-        self.client.send("PING".encode())
-
-        request = self.client.recv(self.size)
-        if request.decode() == "PONG":
-            print("Connection established")
-        else:
-            self.close()
-
         while True:
-            request = self.client.recv(self.size)
-            
-            if request:
-                content = request.decode()
+            try:
+                request = client.recv(self.size)
+                
+                if request:
+                    content = request.decode()
 
-                print(content)
+                    print(content)
 
-            else:
-                break
+                else:
+                    break
+            except ConnectionAbortedError: break
+            except: raise
 
         print("Disconnected")
         self.close()
+        self.active = False
 
     def close(self):
-        if self.client:
-            self.client.close()
         self.server.close()
 
-    def send(self, content):
-        if isinstance(self.client, socket.socket):
-            self.client.send(content.encode())
+    def send(self, index, content):
+        if index >= len(self.clients):
+            return
+        if isinstance(self.clients[index], socket.socket):
+            self.clients[index].send(content.encode())
         else:
-            raise Exception("Error in Server.send(content): Client is not connected.")
+            raise Exception("Server.send(content): Client is not connected.")
+
+class MainFrame(CTkFrame):
+    def __init__(self, master: App, change_theme):
+        super().__init__(master=master)
+
+        self.parent: App = master
+
+        data = read_options()
+
+        self.frame_1 = RobotFrame(number=1, master=self)
+        self.frame_1.pack(pady=80, padx=50, fill="both", expand=True, side=LEFT)
+
+        self.frame_2 = RobotFrame(number=2, master=self)
+        self.frame_2.pack(pady=80, padx=50, fill="both", expand=True, side=RIGHT)
+
+        self.themes_frame = CTkFrame(master=self.parent)
+        self.themes_label = CTkLabel(master=self.themes_frame, text="Theme")
+        self.themes_label.pack()
+        self.themes_option_menu = CTkOptionMenu(master=self.themes_frame, command=change_theme, values=["blue", "dark-blue", "green"])
+        self.themes_option_menu.set(data["gui_theme"])
+        self.themes_option_menu.pack()
 
 class RobotFrame(CTkFrame):
-    def __init__(self, number=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
+    def __init__(self, master: MainFrame, number=None, *args, **kwargs):
         if not number:
             raise Exception("No number provided")
+
+        super().__init__(master=master, *args, **kwargs)
+
+        self.parent: MainFrame = master
 
         title = CTkLabel(master=self, justify=LEFT, text="addr: XXX.XXX.X.XX")
         title.pack(pady=10, padx=10)
@@ -113,8 +223,12 @@ class RobotFrame(CTkFrame):
         
         data = read_options()
         data["robot_{}".format(str(self.number))]["speed"] = self.current_speed
-        with open(join(dirname(__file__), "./options.json"), "w") as f:
-            json.dump(data, f)
+        write_options(data)
+
+        self.parent.parent.server.send(
+            index=self.number-1,
+            content=f"set_speed {str(self.current_speed)}"
+        )
 
     def slider_speed_callback(self, value):
         self.current_speed = value
@@ -123,65 +237,10 @@ class RobotFrame(CTkFrame):
         self.active = not self.active
         self.switch.configure(text="Inactive Active".split()[int(self.active)])
 
-class MainFrame(CTkFrame):
-    def __init__(self, app, change_theme):
-        super().__init__(master=app)
-
-        data = read_options()
-
-        self.themes_label = CTkLabel(master=self, text="Theme")
-        self.themes_label.pack()
-        self.themes_option_menu = CTkOptionMenu(master=self, command=change_theme, values=["blue", "dark-blue", "green"])
-        self.themes_option_menu.set(data["gui_theme"])
-        self.themes_option_menu.pack()
-
-        self.frame_1 = RobotFrame(number=1, master=self)
-        self.frame_1.pack(pady=20, padx=60, fill="both", expand=True, side=LEFT)
-
-        self.frame_2 = RobotFrame(number=2, master=self)
-        self.frame_2.pack(pady=20, padx=60, fill="both", expand=True, side=RIGHT)
-
-class App(CTk):
-    def __init__(self):
-        super().__init__()
-
-        self.geometry("1280x720")
-        self.title("Soccer Robots Controllor")
-
-        self.current_ui = []
-
-        self.main_content = MainFrame(self, self.change_theme)
-        self.main_content.pack(expand=True, fill=BOTH)
-        self.current_ui.append(self.main_content)
-
-        self.server = Server(host_addr = data["host_address"], host_port=data["host_port"])
-
-        self.thread = threading.Thread(target=self.server.run)
-
-        self.protocol("WM_DELETE_WINDOW", self.on_closing)
-        self.after(50, self.thread.start)
-
-    def on_closing(self):
-        if messagebox.askokcancel("Quit", "Do you want to quit?"):
-            app.destroy()
-            self.server.close()
-            sys.exit()
-
-    def reset_current_ui(self):
-        for widget in self.current_ui:
-            widget.destroy()
-        self.main_content = MainFrame(self, self.change_theme)
-        self.main_content.pack(expand=True, fill=BOTH)
-        self.current_ui.append(self.main_content)
-
-    def change_theme(self, theme_name):
-        data = read_options()
-        if theme_name != data["gui_theme"]:
-            data["gui_theme"] = theme_name
-            json.dump(data, open(join(dirname(__file__), "./options.json"), "w"), sort_keys=True, indent=4)
-
-            set_default_color_theme(theme_name.lower())
-            self.reset_current_ui()
+        self.parent.parent.server.send(
+            index=self.number-1,
+            content=f"set_state {str(int(self.active))}"
+        )
 
 if __name__ == "__main__":
     data = read_options()
