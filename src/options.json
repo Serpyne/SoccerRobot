@@ -1,6 +1,1 @@
-{
-    "host_address": "6C:A1:00:05:72:DE",
-    "host_port": 4,
-    "wheel_calibration": [1, 1, 1, 1],
-    "gui_theme": "blue"
-}
+{"gui_theme": "green", "host_address": "6C:A1:00:05:72:DE", "host_port": 4, "robot_1": {"speed": 1}, "robot_2": {"speed": 1}}
