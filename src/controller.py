@@ -3,6 +3,11 @@ from time import sleep
 from customtkinter import *
 from tkinter import messagebox
 from os.path import join, dirname
+from math import atan2, cos, sin, sqrt, radians, pi
+
+BLUETOOTH = 0xF0
+LOCALHOST = 0xF1
+CONNECTION_MODE = LOCALHOST
 
 def read_options() -> dict:
     return json.load(open(join(dirname(__file__), "./options.json"), "r"))
@@ -19,7 +24,13 @@ class App(CTk):
     def __init__(self):
         super().__init__()
 
-        self.geometry("1280x720")
+        win_size = (1280, 720)
+        wx = (self.winfo_screenwidth() - win_size[0]) // 2
+        wy = (self.winfo_screenheight() - win_size[1]) // 2
+
+        self.geometry("%dx%d+%d+%d" % (win_size[0], win_size[1], wx, wy))
+        self.minsize(win_size[0], win_size[1])
+        self.maxsize(win_size[0], win_size[1])
         self.title("Soccer Robots Controllor")
 
         self.current_ui = []
@@ -47,6 +58,13 @@ class App(CTk):
     def update(self):
         if not self.server.active:
             sys.exit()
+
+        # Joystick movement
+        move_angle_1, move_speed_1 = self.main_content.frame_1.get_movement_value()
+        move_angle_2, move_speed_2 = self.main_content.frame_2.get_movement_value()
+        if move_angle_1 and move_speed_1: self.server.send(0, "move %s %s" % (str(move_angle_1), str(move_speed_1)))
+        if move_angle_2 and move_speed_2: self.server.send(1, "move %s %s" % (str(move_angle_2), str(move_speed_2)))
+
         self.after(50, self.update)
 
     def on_closing(self):
@@ -81,14 +99,16 @@ class Server:
 
         self.active = True
 
-        self.addr = "127.0.0.1"
-        self.port = 8080
-        # self.addr = host_addr
-        # self.port = host_port
         self.size = 1024
-
-        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # self.server = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+        if CONNECTION_MODE == BLUETOOTH:
+            self.addr = host_addr
+            self.port = host_port
+            self.server = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+        elif CONNECTION_MODE == LOCALHOST:
+            self.addr = "127.0.0.1"
+            self.port = 8080
+            self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            
         self.server.bind((self.addr, self.port))
         self.server.listen(1) # Only two connections allowed
         print("Server is listening on %s:%d" % (self.addr, self.port))
@@ -125,9 +145,7 @@ class Server:
                 
                 if request:
                     content = request.decode()
-
                     print(content)
-
                 else:
                     break
             except ConnectionAbortedError: break
@@ -144,7 +162,7 @@ class Server:
         if index >= len(self.clients):
             return
         if isinstance(self.clients[index], socket.socket):
-            self.clients[index].send(content.encode())
+            self.clients[index].send(str(content).encode())
         else:
             raise Exception("Server.send(content): Client is not connected.")
 
@@ -186,7 +204,7 @@ class RobotFrame(CTkFrame):
         data = read_options()
         robot_data = data["robot_{}".format(str(number))]
 
-        self.current_speed = robot_data["speed"]
+        self.current_speed = round(robot_data["speed"], 3)
         self.active = False
 
         # Current Speed Frame
@@ -214,8 +232,23 @@ class RobotFrame(CTkFrame):
         self.set_speed_button = CTkButton(master=self.set_speed_frame, command=self.set_speed, text="Set speed")
         self.set_speed_button.pack(pady=10, padx=10, side=LEFT)
 
+        # Toggle Robot On and Off 
         self.switch = CTkSwitch(master=self, command=self.toggle_state, text="Inactive")
         self.switch.pack(pady=10, padx=10)
+
+        # Joysticks
+        self.movement_joystick = Joystick(master=self, relpos=(0, 1),
+                                                size=(501, 501), center=(250, 250),
+                                                radius=170, cursor_radius=80, bg=rgb_to_hex((70, 70, 70)), anchor="sw")
+        self.calibration_joystick = Joystick(master=self, relpos=(.67, 1),
+                                                size=(261, 261), center=(130, 130),
+                                                radius=85, cursor_radius=45, bg=rgb_to_hex((55, 55, 55)), anchor="sw",
+                                                mode="stiff", text="Calibration")
+        self.movement_joystick.loop()
+        self.calibration_joystick.loop()
+        try:
+            self.calibration_joystick.angle = radians(self.server.gyro_angle)
+        except: pass
 
     def set_speed(self):
         self.current_speed_pb.set(self.current_speed)
@@ -231,7 +264,7 @@ class RobotFrame(CTkFrame):
         )
 
     def slider_speed_callback(self, value):
-        self.current_speed = value
+        self.current_speed = round(value, 2)
 
     def toggle_state(self):
         self.active = not self.active
@@ -241,6 +274,111 @@ class RobotFrame(CTkFrame):
             index=self.number-1,
             content=f"set_state {str(int(self.active))}"
         )
+
+    def get_movement_value(self):
+        if self.movement_joystick.pressed:
+            angle = round((atan2(self.movement_joystick.norm[1], self.movement_joystick.norm[0]) + self.calibration_joystick.angle + pi/2) % (2*pi), 3)
+            speed = round(self.movement_joystick.dist, 3)
+            return angle, speed
+        else:
+            return None, None
+        
+def rgb_to_hex(rgb):
+    """translates an rgb tuple of int to a tkinter friendly color code"""
+    return "#%02x%02x%02x" % rgb   
+
+def rotate(point, origin=(0,0), rot=0):
+    mag = sqrt((point[0]-origin[0])**2 + (point[1]-origin[1])**2)
+    a = atan2(point[1]-origin[1], point[0]-origin[0])
+    vx = mag * cos(rot + a)
+    vy = mag * sin(rot + a)
+    return [vx + origin[0], vy + origin[1]]
+
+def draw_rotated_rect(canvas, center, size, rot, fill=None):
+    points = [
+        (size[0]/2, size[1]/2),
+        (size[0]/2, -size[1]/2),
+        (-size[0]/2, -size[1]/2),
+        (-size[0]/2, size[1]/2)
+    ]
+    temp = [rotate(p, rot=rot) for p in points]
+    points = []
+    for p in temp:
+        points.append(int(p[0] + center[0]))
+        points.append(int(p[1] + center[1]))
+    canvas.create_polygon(points, fill=fill, outline="black", width=5)
+    return points
+
+class Joystick:
+    def __init__(self, master, relpos, size, center, radius, cursor_radius, fill="grey", cursor_colour="darkgrey", bg="white", mode="normal", text=None, anchor="n"):
+        self.master = master
+        self.mode = mode
+
+        self.pos = [0, 0]
+        self.new_pos = self.pos.copy()
+
+        self.pressed = None
+
+        self.angle = 0
+        self.norm = [0, 0]
+        self.dist = 0
+
+        self.center = center
+        self.extent = radius
+        self.cursor_rad = cursor_radius
+        self.fill = fill
+        self.cursor_colour = cursor_colour
+
+        self.text = text
+
+        colour = ThemeManager.theme['CTkFrame']["top_fg_color"][1][-2:]
+        if colour == "00": colour = "100"
+        colour = round(int(colour) * 2.55)
+        colour = rgb_to_hex((colour, colour, colour))
+
+        self.cw = size[0]
+        self.ch = size[1]
+        self.canvas = CTkCanvas(master, width=self.cw, height=self.ch, bg=colour, bd=0, relief='ridge', highlightthickness=0)
+        self.canvas.place(relx=relpos[0], rely=relpos[1], anchor=anchor, bordermode="inside")
+
+        self.canvas.bind('<B1-Motion>', self.press)
+        self.canvas.bind('<ButtonPress-1>', self.press)
+        self.canvas.bind('<ButtonRelease-1>', self.release)
+
+    def draw(self):
+        self.canvas.delete('all')
+        self.canvas.create_aa_circle(x_pos=self.center[0], y_pos=self.center[1], radius=self.extent, angle=0, fill=self.cursor_colour)
+        self.canvas.create_aa_circle(x_pos=self.center[0], y_pos=self.center[1], radius=self.extent - 2, angle=0, fill=self.fill)
+        self.canvas.create_aa_circle(x_pos=self.center[0] + self.pos[0], y_pos=self.center[1] + self.pos[1], radius=self.cursor_rad, angle=0, fill=rgb_to_hex((0, 0, 0)))
+        self.canvas.create_aa_circle(x_pos=self.center[0] + self.pos[0], y_pos=self.center[1] + self.pos[1], radius=self.cursor_rad - 2, angle=0, fill=self.cursor_colour)
+        
+        if self.pressed:
+            t = [self.pressed[0] - self.center[0], self.pressed[1] - self.center[1]]
+            if not(t[0]*t[0] + t[1]*t[1] < self.extent**2) or self.mode == "stiff":
+                a = atan2(t[1], t[0])
+                self.angle = a
+                self.new_pos = [self.extent*cos(a), self.extent*sin(a)]
+            else:
+                self.new_pos = t.copy()
+        else:
+            if self.mode == "normal":
+                self.new_pos = [0, 0]
+        
+        self.pos[0] += (self.new_pos[0] - self.pos[0])*.5
+        self.pos[1] += (self.new_pos[1] - self.pos[1])*.5
+        
+        self.norm = [self.pos[0] / self.extent, self.pos[1] / self.extent]
+        self.dist = sqrt(self.norm[0]**2 + self.norm[1]**2)
+        
+    def loop(self):
+        self.draw()
+        self.master.after(15, self.loop)
+
+    def press(self, event):
+        self.pressed = [event.x, event.y]
+        
+    def release(self, event):
+        self.pressed = None
 
 if __name__ == "__main__":
     data = read_options()

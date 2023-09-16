@@ -1,11 +1,11 @@
 {
-    "gui_theme": "green",
+    "gui_theme": "dark-blue",
     "host_address": "6C:A1:00:05:72:DE",
     "host_port": 4,
     "robot_1": {
-        "speed": 0.49
+        "speed": 1
     },
     "robot_2": {
-        "speed": 0.635
+        "speed": 1
     }
 }
