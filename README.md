@@ -8,7 +8,7 @@ Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: J
   * client.py runs on both robots
   * controller.py runs on the laptop, connects both robots through bluetooth
 
-# Instructions:
+# Instructions for ./remote/:
 1. <h6>connect the ev3 brick via bluetooth</h6>
   * scan for devices and connect to the laptop
   * make sure it says **status: connected**
@@ -25,21 +25,21 @@ Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: J
 5. <h6>once server is listening, run ROBIN.py on the ev3.</h6>
   * if all goes well, after around 10 seconds the gui should open on the laptop and you can control it with the joystick on the top right
 
+# Instructions for ./src/:
+
 # Features
-- Joystick remote control
+- Joystick remote control in ./remote/
 - Holonomic wheel system
-- Ball-following capabilities
+- Capable of scoring consistently
 
 # To implement:
-- Compass, motion*, and ultrasonic sensors.
-- Attacking and defensive strategies
 - Communication between both robots
-- Second robot script for the other robot which uses two IRs instead of an IR seeker.<br>
+- Controller for turning on and off robots quicker (was a major problem at the state competition as the robot took up to 15 seconds to boot up)
+- Making a robot which can travel around the field at top speed and accuracy.
 <br>
-*Still not sure what this means, probably referring to ultrasonic detection of the walls.
 
-# Flowchart
+# Flowchart (deprecated)
 ![Flowchart](/assets/img1.png?raw=true "Flowchart")
 ![Defense](/assets/img2.png?raw=true "Defense")
-# Pseudocode
+# Pseudocode (depracted, check code)
 ![Pseudocode](/assets/img3.png?raw=true "Pseudocode")
