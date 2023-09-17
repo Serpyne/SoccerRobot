@@ -4,10 +4,15 @@ from customtkinter import *
 from tkinter import messagebox
 from os.path import join, dirname
 from math import atan2, cos, sin, sqrt, radians, pi
+from pathlib import Path
+from os import listdir
 
 BLUETOOTH = 0xF0
 LOCALHOST = 0xF1
 CONNECTION_MODE = LOCALHOST
+
+f = join(Path(dirname(__file__)).parent, "themes")
+THEMES = [x[:-5] for x in listdir(f) if "json" in x]
 
 def read_options() -> dict:
     return json.load(open(join(dirname(__file__), "./options.json"), "r"))
@@ -33,6 +38,8 @@ class App(CTk):
         self.maxsize(win_size[0], win_size[1])
         self.title("Soccer Robots Controllor")
 
+        self.server = Server(master=self, host_addr = data["host_address"], host_port = data["host_port"])
+
         self.current_ui = []
         self.pending_labels = [
             CTkLabel(master=self, text="Waiting for connection..."),
@@ -45,8 +52,6 @@ class App(CTk):
         self.pending_labels[0].place(relwidth=0.5, relheight=1, relx=0, rely=0)
         self.pending_labels[1].place(relwidth=0.5, relheight=1, relx=0.5, rely=0)
         [pl.lift() for pl in self.pending_labels]
-
-        self.server = Server(master=self, host_addr = data["host_address"], host_port = data["host_port"])
 
         self.thread = threading.Thread(target=self.server.run)
 
@@ -70,7 +75,7 @@ class App(CTk):
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
             for client in self.server.clients:
-                client.close()
+                client[0].close()
             self.server.close()
             self.destroy()
             sys.exit()
@@ -88,7 +93,8 @@ class App(CTk):
             data["gui_theme"] = theme_name
             write_options(data)
 
-            set_default_color_theme(theme_name.lower())
+            parent = Path(dirname(__file__)).parent
+            set_default_color_theme(join(parent, "themes", theme_name+".json"))
             self.reset_current_ui()
             self.main_content.themes_frame.place(relx=0, rely=1, anchor="sw")
             self.main_content.themes_frame.lift()
@@ -130,10 +136,15 @@ class Server:
             sleep(0.01)
     
     def on_new_client(self, client, addr):
-        self.clients.append(client)
+        self.clients.append([client, addr])
         
+        title_text = "Address: %s Port: %d" % addr
         if len(self.parent.pending_labels) == 2:
+            self.parent.main_content.frame_1.title.configure(text=title_text)
             self.parent.main_content.pack(expand=True, fill=BOTH)
+        elif len(self.parent.pending_labels) == 1:
+            self.parent.main_content.frame_2.title.configure(text=title_text)
+
         self.parent.pending_labels[0].destroy()
         self.parent.pending_labels.pop(0)
 
@@ -161,8 +172,8 @@ class Server:
     def send(self, index, content):
         if index >= len(self.clients):
             return
-        if isinstance(self.clients[index], socket.socket):
-            self.clients[index].send(str(content).encode())
+        if isinstance(self.clients[index][0], socket.socket):
+            self.clients[index][0].send(str(content).encode())
         else:
             raise Exception("Server.send(content): Client is not connected.")
 
@@ -183,7 +194,7 @@ class MainFrame(CTkFrame):
         self.themes_frame = CTkFrame(master=self.parent)
         self.themes_label = CTkLabel(master=self.themes_frame, text="Theme")
         self.themes_label.pack()
-        self.themes_option_menu = CTkOptionMenu(master=self.themes_frame, command=change_theme, values=["blue", "dark-blue", "green"])
+        self.themes_option_menu = CTkOptionMenu(master=self.themes_frame, command=change_theme, values=THEMES)
         self.themes_option_menu.set(data["gui_theme"])
         self.themes_option_menu.pack()
 
@@ -196,10 +207,13 @@ class RobotFrame(CTkFrame):
 
         self.parent: MainFrame = master
 
-        title = CTkLabel(master=self, justify=LEFT, text="addr: XXX.XXX.X.XX")
-        title.pack(pady=10, padx=10)
-
         self.number = number
+
+        clients = self.parent.parent.server.clients
+
+        self.title_text = ("Address: %s Port: %d" % clients[self.number - 1][1]) if (self.number <= len(clients) and 0 < len(clients)) else "addr: XXX.XXX.X.XX"
+        self.title = CTkLabel(master=self, justify=LEFT, text=self.title_text)
+        self.title.pack(pady=10, padx=10)
 
         data = read_options()
         robot_data = data["robot_{}".format(str(number))]
@@ -384,6 +398,9 @@ if __name__ == "__main__":
     data = read_options()
 
     set_appearance_mode("dark")
+    if not (data["gui_theme"] in THEMES):
+        data["gui_theme"] = THEMES[0]
+        write_options(data)
     set_default_color_theme(data["gui_theme"])
 
     app = App()
