@@ -27,10 +27,11 @@ Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: J
 3. Run controller.py. It should say "Server is listening on addr:port".
 4. Run client.py on the EV3. After 10-15 seconds, the window on the laptop should update to show a user interface.
 <h4>Capable of connecting one or two robots.</h4>
-- On the UI, change the slider and press the set speed button to change the speed of the respective robot.
-- Activating the switch will turn on/off the automatic gameplay.
-- The reset orientation button allows for reorientating the robot such as between rounds, on damaged callouts.
-- The joystick acts as a remote control*. It will override automatic gameplay if the switch is activated.
+
+* On the UI, change the slider and press the set speed button to change the speed of the respective robot.
+* Activating the switch will turn on/off the automatic gameplay.
+* The reset orientation button allows for reorientating the robot such as between rounds, on damaged callouts.
+* The joystick acts as a remote control*. It will override automatic gameplay if the switch is activated.
 <h5>*Remote control is not permitted in competitive play, however, it was only used for testing of robot stability, motor strength and calibration, and as a fun tool for my peers and I.</h5>
 <br>
 
