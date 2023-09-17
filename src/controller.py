@@ -12,7 +12,7 @@ LOCALHOST = 0xF1
 CONNECTION_MODE = LOCALHOST
 
 f = join(Path(dirname(__file__)).parent, "themes")
-THEMES = [x[:-5] for x in listdir(f) if "json" in x]
+THEMES = sorted([x[:-5] for x in listdir(f) if "json" in x])
 
 def read_options() -> dict:
     return json.load(open(join(dirname(__file__), "./options.json"), "r"))
@@ -103,9 +103,8 @@ class Server:
     def __init__(self, master: App, host_addr, host_port):
         self.parent: App = master
 
-        self.active = True
+        self.bufsize = 16
 
-        self.size = 1024
         if CONNECTION_MODE == BLUETOOTH:
             self.addr = host_addr
             self.port = host_port
@@ -120,6 +119,8 @@ class Server:
         print("Server is listening on %s:%d" % (self.addr, self.port))
         
         self.clients = []
+
+        self.active = True
 
     def run(self):
         while len(self.parent.pending_labels) > 0:
@@ -152,7 +153,7 @@ class Server:
 
         while True:
             try:
-                request = client.recv(self.size)
+                request = client.recv(self.bufsize)
                 
                 if request:
                     content = request.decode()
@@ -223,10 +224,9 @@ class RobotFrame(CTkFrame):
 
         # Current Speed Frame
         self.current_speed_frame = CTkFrame(master=self)
-        self.current_speed_frame.pack(pady=10, padx=10)
+        self.current_speed_frame.pack(pady=2, padx=10)
 
-        label = CTkLabel(master=self.current_speed_frame, justify=LEFT, text="Current Speed")
-        label.pack()
+        CTkLabel(master=self.current_speed_frame, justify=LEFT, text="Current Speed").pack()
 
         self.current_speed_pb = CTkProgressBar(master=self.current_speed_frame)
         self.current_speed_pb.pack(padx=10, side=LEFT)
@@ -237,7 +237,7 @@ class RobotFrame(CTkFrame):
 
         # Set Speed Frame
         self.set_speed_frame = CTkFrame(master=self)
-        self.set_speed_frame.pack(pady=10, padx=10)
+        self.set_speed_frame.pack(pady=2, padx=10)
 
         self.set_speed_slider = CTkSlider(master=self.set_speed_frame, command=self.slider_speed_callback, from_=0, to=1)
         self.set_speed_slider.pack(pady=10, padx=10, side=LEFT)
@@ -246,9 +246,15 @@ class RobotFrame(CTkFrame):
         self.set_speed_button = CTkButton(master=self.set_speed_frame, command=self.set_speed, text="Set speed")
         self.set_speed_button.pack(pady=10, padx=10, side=LEFT)
 
+        self.controls_frame = CTkFrame(master=self)
+        self.controls_frame.pack(pady=10, padx=10)
+
         # Toggle Robot On and Off 
-        self.switch = CTkSwitch(master=self, command=self.toggle_state, text="Inactive")
-        self.switch.pack(pady=10, padx=10)
+        self.switch = CTkSwitch(master=self.controls_frame, command=self.toggle_state, text="Inactive")
+        self.switch.pack(pady=10, padx=10, side=LEFT)
+
+        self.reset_orientation_button = CTkButton(master=self.controls_frame, command=self.reset_orientation, text="Reset orientation")
+        self.reset_orientation_button.pack(pady=10, padx=10, side=LEFT)
 
         # Joysticks
         self.movement_joystick = Joystick(master=self, relpos=(0, 1),
@@ -276,6 +282,9 @@ class RobotFrame(CTkFrame):
             index=self.number-1,
             content=f"set_speed {str(self.current_speed)}"
         )
+
+    def reset_orientation(self):
+        self.parent.parent.server.send(index=self.number-1, content="reorientate")
 
     def slider_speed_callback(self, value):
         self.current_speed = round(value, 2)
@@ -401,7 +410,8 @@ if __name__ == "__main__":
     if not (data["gui_theme"] in THEMES):
         data["gui_theme"] = THEMES[0]
         write_options(data)
-    set_default_color_theme(data["gui_theme"])
+    parent = Path(dirname(__file__)).parent
+    set_default_color_theme(join(parent, "themes", data["gui_theme"]+".json"))
 
     app = App()
     app.mainloop()

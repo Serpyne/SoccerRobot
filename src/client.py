@@ -10,7 +10,15 @@ from ev3dev2.sensor import Sensor, INPUT_1, INPUT_2, INPUT_3, INPUT_4
 
 from sensor import IRSeeker360
 
+MOTORS = 0xA1
+SENSORS = 0xA2
 DEBUG = None
+
+PORTS = {
+    "MOTORS":   [OUTPUT_A, OUTPUT_B, OUTPUT_C, OUTPUT_D],
+    "COMPASS":   INPUT_3,
+    "IR":        INPUT_4
+}
 
 MAX_SPEED = 1560
 
@@ -38,32 +46,33 @@ class Robot:
     def __init__(self):
         """RoboCup Soccer Robot"""
 
-        self.ir_sensor = IRSeeker360(INPUT_4)
-        self.compass_sensor = CompassSensor(driver_name="ht-nxt-compass", address=INPUT_3)
+        if DEBUG == None:
+            self.motors = self.motors_init()
 
-        self.motors = [
-            Motor(OUTPUT_A), # LEFT    [0]
-            Motor(OUTPUT_B), # FRONT   [1]
-            Motor(OUTPUT_C, polarity_bias=-1), # RIGHT   [2]
-            Motor(OUTPUT_D, polarity_bias=-1)  # BACK    [3]
-        ]
+            self.compass_sensor = CompassSensor(driver_name="ht-nxt-compass", address=PORTS["COMPASS"])
+            self.ir_sensor = IRSeeker360(PORTS["IR"])
+
+        elif DEBUG == MOTORS:
+            self.motors = self.motors_init()
+
+        elif DEBUG == SENSORS:
+            self.compass_sensor = CompassSensor(driver_name="ht-nxt-compass", address=PORTS["COMPASS"])
+            self.ir_sensor = IRSeeker360(PORTS["IR"])
+        
+        else: raise Exception("Debug mode must be None, MOTORS, or SENSORS.")
 
         self.orientation = 0
         self.original_orientation = 0
 
         self.move_direction = None
-        self.move_speed = None
+        self.move_speed = MAX_SPEED
 
         self.see_ball = False
         self.global_ball_angle = None
 
-        self.active = False
-
-        self.at_goal = False
-        self.defense_going_back = False
-
         self.detection_extent = radians(31)
 
+        self.active = False
         self.tick = 0
 
         # Client initialisation
@@ -76,24 +85,33 @@ class Robot:
         self.client.connect((target_host, target_port))
         print("Connected on " + str(self.client.getsockname()))
 
-    def move(self, angle, speed=1080):
+    def motors_init(self) -> list[Motor]:
+        """Initialise motors. Returns list of four motors."""
+        return [
+            Motor(PORTS["MOTORS"][0]),                     # LEFT    [0]
+            Motor(PORTS["MOTORS"][1]),                     # FRONT   [1]
+            Motor(PORTS["MOTORS"][2], polarity_bias=-1),   # RIGHT   [2]
+            Motor(PORTS["MOTORS"][3], polarity_bias=-1)    # BACK    [3]
+        ]
+
+    def move(self, angle, speed=None):
         """Set move direction and speed of robot"""
 
         if angle != None:
             self.move_direction = (angle - self.orientation) % (2*pi)
+        if speed:
             self.move_speed = speed
 
     def stop(self):
-        """Set move direction and speed to None"""
+        """Set move direction to None"""
 
         self.move_direction = None
-        self.move_speed = None
 
-    def wait(self, ms: int):
-        """sleep(n ms) and tick(n)"""
+    def wait(self, secs: int):
+        """sleep(ms) and tick(secs)"""
 
-        sleep(ms * .001)
-        self.tick += ms
+        sleep(secs * .001)
+        self.tick += secs
 
     def orientated_between(self, start, end) -> bool:
         """Returns True if robot is orientated between two values, False if it isn't."""
@@ -112,7 +130,7 @@ class Robot:
                 return False
 
     def run(self):
-        """Run(): Start threads for robot"""
+        """Start threads for robot; updates, movement, and requests."""
 
         threads = [
             threading.Thread(target=self.update_loop),
@@ -124,9 +142,10 @@ class Robot:
             t.start()
 
     def request_handler(self):
+        """Handle requests from server"""
         while True:
             try:
-                request = self.client.recv(1024)
+                request = self.client.recv(16)
                 if request:
                     self.process_request(request.decode())
             except TimeoutError: pass
@@ -139,6 +158,8 @@ class Robot:
         self.client.close()
 
     def process_request(self, request: str):
+        """Process requests from server into callables. `request` parameter must be a string and is received by the server.
+        Commands include: `set_speed value`, `set_state bool`, `move dir speed`, `reorientate`."""
         content = request.split()
         if len(content) >= 2:
             command = content[0]
@@ -151,13 +172,16 @@ class Robot:
                 case "move":
                     angle = float(content[1])
                     speed = float(content[2])
-                    self.move(angle, MAX_SPEED * speed)
+                    self.move(angle=angle, speed=MAX_SPEED * speed)
                 case _:
                     self.client.send(request.encode())
-    
+        else:
+            if content == "reorientate":
+                self.original_orientation = self.orientation  
 
     def update_loop(self):
-        self.original_orientation = self.compass_sensor.value()
+        """Update loop handling sensor values and gameplay logic."""
+        self.original_orientation = radians(self.compass_sensor.value()) % (2*pi)
 
         while True:
             if self.active:
@@ -169,12 +193,12 @@ class Robot:
 
         print("Stopping")
         self.ir_sensor.close()
-        return
 
     def update(self):
+        """Fixed update for getting sensor values and gameplay logic."""
         if (self.tick % 20) == 0:
-            self.compass_sensor.angle = self.compass_sensor.value() - self.original_orientation
-            self.orientation = radians(self.compass_sensor.angle) % (2*pi)
+            self.compass_sensor.angle = self.compass_sensor.value()
+            self.orientation = (radians(self.compass_sensor.angle) - self.original_orientation) % (2*pi)
 
             self.relative_ball_angle, self.ball_strength = self.ir_sensor.read()
             self.relative_ball_angle_radians = (self.relative_ball_angle % 12) * pi/6
@@ -186,9 +210,13 @@ class Robot:
 
             self.gameplay()
 
+            for x in [self.ir_sensor.]
+            self.client.send()
+
         self.wait(10)
 
-    def gameplay(self):
+    def gameplay(self): 
+        """Gameplay logic"""
         if self.global_ball_angle > 3*pi/2 or self.global_ball_angle < pi/2:
 
             if self.ball_strength > 80:
@@ -198,9 +226,9 @@ class Robot:
                     self.move(0)
                 else:
                     if self.global_ball_angle < pi:
-                        self.move(pi/2, speed=720)
+                        self.move(pi/2)
                     else:
-                        self.move(3*pi/2, speed=720)
+                        self.move(3*pi/2)
 
         else:
             if self.global_ball_angle > pi - .3 and self.global_ball_angle < pi + .3:
@@ -209,17 +237,21 @@ class Robot:
                 self.move(pi)
 
     def movement_loop(self):
+        """Movement thread handling movement."""
         while True:
             if self.active:
                 self.movement()
+            sleep(.01)
 
     def stop_all_motors(self):
+        """Stops all motors."""
         self.motors[0].stop()
         self.motors[1].stop()
         self.motors[2].stop()
         self.motors[3].stop()
 
     def movement(self):
+        """Fixed update for movement: rotating or stopping motors."""
         if self.move_direction == None or self.move_speed == None:
             self.stop_all_motors()
         else:
@@ -234,9 +266,6 @@ class Robot:
 
         if not self.active:
             self.stop_all_motors()
-            return
-        
-        sleep(.01)
 
 if __name__ == "__main__":
     robot = Robot()
