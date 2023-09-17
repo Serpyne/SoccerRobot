@@ -53,12 +53,19 @@ class App(CTk):
         self.pending_labels[1].place(relwidth=0.5, relheight=1, relx=0.5, rely=0)
         [pl.lift() for pl in self.pending_labels]
 
+        self.focused_robot = None
+        self.main_content.frame_1.bind("<ButtonPress-1>", lambda event: self.focus_robot(0))
+        self.main_content.frame_2.bind("<ButtonPress-1>", lambda event: self.focus_robot(1))
+
         self.thread = threading.Thread(target=self.server.run)
+
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         self.after(50, self.thread.start)
         self.after(50, self.update)
 
-        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+    def focus_robot(self, number):
+        self.focused_robot = number
 
     def update(self):
         if not self.server.active:
@@ -69,6 +76,15 @@ class App(CTk):
         move_angle_2, move_speed_2 = self.main_content.frame_2.get_movement_value()
         if move_angle_1 and move_speed_1: self.server.send(0, "move %s %s" % (str(move_angle_1), str(move_speed_1)))
         if move_angle_2 and move_speed_2: self.server.send(1, "move %s %s" % (str(move_angle_2), str(move_speed_2)))
+
+        if self.focused_robot:
+            colour = [(hex_to_rgb(self.main_content.bg_colour)/255)**2 * 255]
+            if self.focused_robot == 0:
+                self.main_content.frame_1.configure(bg_color=colour)
+                self.main_content.frame_2.configure(bg_color=self.main_content.bg_colour)
+            elif self.focused_robot == 1:
+                self.main_content.frame_1.configure(bg_color=self.main_content.bg_colour)
+                self.main_content.frame_2.configure(bg_color=colour)
 
         self.after(50, self.update)
 
@@ -183,6 +199,11 @@ class MainFrame(CTkFrame):
         super().__init__(master=master)
 
         self.parent: App = master
+
+        colour = ThemeManager.theme['CTkFrame']["top_fg_color"][1][-2:]
+        if colour == "00": colour = "100"
+        colour = round(int(colour) * 2.55)
+        self.bg_colour = rgb_to_hex((colour, colour, colour))
 
         data = read_options()
 
@@ -310,6 +331,11 @@ def rgb_to_hex(rgb):
     """translates an rgb tuple of int to a tkinter friendly color code"""
     return "#%02x%02x%02x" % rgb   
 
+def hex_to_rgb(value):
+    value = value.lstrip('#')
+    lv = len(value)
+    return tuple(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
+
 def rotate(point, origin=(0,0), rot=0):
     mag = sqrt((point[0]-origin[0])**2 + (point[1]-origin[1])**2)
     a = atan2(point[1]-origin[1], point[0]-origin[0])
@@ -354,14 +380,9 @@ class Joystick:
 
         self.text = text
 
-        colour = ThemeManager.theme['CTkFrame']["top_fg_color"][1][-2:]
-        if colour == "00": colour = "100"
-        colour = round(int(colour) * 2.55)
-        colour = rgb_to_hex((colour, colour, colour))
-
         self.cw = size[0]
         self.ch = size[1]
-        self.canvas = CTkCanvas(master, width=self.cw, height=self.ch, bg=colour, bd=0, relief='ridge', highlightthickness=0)
+        self.canvas = CTkCanvas(master, width=self.cw, height=self.ch, bg=self.master.parent.bg_colour, bd=0, relief='ridge', highlightthickness=0)
         self.canvas.place(relx=relpos[0], rely=relpos[1], anchor=anchor, bordermode="inside")
 
         self.canvas.bind('<B1-Motion>', self.press)
@@ -387,15 +408,15 @@ class Joystick:
             if self.mode == "normal":
                 self.new_pos = [0, 0]
         
-        self.pos[0] += (self.new_pos[0] - self.pos[0])*.5
-        self.pos[1] += (self.new_pos[1] - self.pos[1])*.5
+        self.pos[0] += (self.new_pos[0] - self.pos[0])*.6
+        self.pos[1] += (self.new_pos[1] - self.pos[1])*.6
         
         self.norm = [self.pos[0] / self.extent, self.pos[1] / self.extent]
         self.dist = sqrt(self.norm[0]**2 + self.norm[1]**2)
         
     def loop(self):
         self.draw()
-        self.master.after(15, self.loop)
+        self.master.after(20, self.loop)
 
     def press(self, event):
         self.pressed = [event.x, event.y]

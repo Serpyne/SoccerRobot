@@ -37,8 +37,8 @@ class Motor(MediumMotor):
         self.run_forever(speed_sp=abs(speed) * self.speed_bias)
 
 class CompassSensor(Sensor):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, address, *args, **kwargs):
+        super().__init__(driver_name="ht-nxt-compass", address=address, *args, **kwargs)
         self.angle = None
         self.command = "BEGIN-CAL"
         self.command = "END-CAL"
@@ -50,14 +50,14 @@ class Robot:
         if DEBUG == None:
             self.motors = self.motors_init()
 
-            self.compass_sensor = CompassSensor(driver_name="ht-nxt-compass", address=PORTS["COMPASS"])
+            self.compass_sensor = CompassSensor(PORTS["COMPASS"])
             self.ir_sensor = IRSeeker360(PORTS["IR"])
 
         elif DEBUG == MOTORS:
             self.motors = self.motors_init()
 
         elif DEBUG == SENSORS:
-            self.compass_sensor = CompassSensor(driver_name="ht-nxt-compass", address=PORTS["COMPASS"])
+            self.compass_sensor = CompassSensor(PORTS["COMPASS"])
             self.ir_sensor = IRSeeker360(PORTS["IR"])
         
         else: raise Exception("Debug mode must be None, MOTORS, or SENSORS.")
