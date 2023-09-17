@@ -6,7 +6,7 @@ Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: J
   * client.py is what runs on the robot, which controls client-sided movement + receiving controller values
   * server.py is what you run on your laptop, so the robot can connect to it and an external controller communicates with it.
 * ./src/
-  * client.py runs on both robots
+  * client.py* runs on both robots
   * controller.py runs on the laptop, connects both robots through bluetooth
 * ./themes/
   * generate_random_theme.py creates a theme template with random colours. No practical purpose, just for fun.
@@ -14,9 +14,11 @@ Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: J
 * ./other/ (for testing, debugging, and previous versions)
   * car ball visualisation.py - Pygame application for determining the angle at which the robot must move to position itself in terms of the ball.
   * Car movement visualiser.py - Pygame application for visualing the holonomic wheel system.
+  * localhost_client.py - Connects to src/controller.py through localhost instead of bluetooth. Now ported to client.py
   * The rest of the files are variations to the main files which were used for debugging.
 * ./assets/
   * Flowcharts and pseudocode on the Github.
+<h5>*DEBUG = None for normal bluetooth with all ports. DEBUG = MOTORS for motor debugging. DEBUG = SENSORS for sensor debugging. DEBUG = LOCALHOST connects through localhost instead of bluetooth. Requires the server to be localhost as well.</h5>
 <br>
 
 # Instructions for ./src/ (current)

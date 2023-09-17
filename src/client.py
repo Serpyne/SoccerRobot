@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+MOTORS = 0xA1
+SENSORS = 0xA2
+LOCALHOST = 0xA3
+DEBUG = LOCALHOST
+
 import threading, json, socket
 from time import sleep
 from os.path import join, dirname
@@ -7,12 +12,8 @@ from math import pi, cos, sin, radians
 
 from ev3dev2.motor import MediumMotor, OUTPUT_A, OUTPUT_B, OUTPUT_C, OUTPUT_D
 from ev3dev2.sensor import Sensor, INPUT_1, INPUT_2, INPUT_3, INPUT_4
-
-from sensor import IRSeeker360
-
-MOTORS = 0xA1
-SENSORS = 0xA2
-DEBUG = None
+if DEBUG in (SENSORS, None):
+    from sensor import IRSeeker360
 
 PORTS = {
     "MOTORS":   [OUTPUT_A, OUTPUT_B, OUTPUT_C, OUTPUT_D],
@@ -181,6 +182,9 @@ class Robot:
 
     def update_loop(self):
         """Update loop handling sensor values and gameplay logic."""
+        if DEBUG == MOTORS:
+            return
+        
         self.original_orientation = radians(self.compass_sensor.value()) % (2*pi)
 
         while True:
@@ -210,8 +214,8 @@ class Robot:
 
             self.gameplay()
 
-            for x in [self.ir_sensor.]
-            self.client.send()
+            # for x in [self.ir_sensor.]
+            # self.client.send()
 
         self.wait(10)
 
@@ -252,6 +256,9 @@ class Robot:
 
     def movement(self):
         """Fixed update for movement: rotating or stopping motors."""
+        if DEBUG == SENSORS:
+            return
+
         if self.move_direction == None or self.move_speed == None:
             self.stop_all_motors()
         else:
@@ -268,5 +275,35 @@ class Robot:
             self.stop_all_motors()
 
 if __name__ == "__main__":
-    robot = Robot()
-    robot.run()
+    if DEBUG == LOCALHOST:
+        data = json.load(open(join(dirname(__file__), "./options.json")))
+        target_host = data["host_address"]
+        target_port = data["host_port"]
+
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client.settimeout(1)
+
+        try: client.connect(('127.0.0.1', 8080))
+        except TimeoutError: raise Exception("Cannot connect..")
+        except: raise
+        print("Connected on " + str(client.getsockname()))
+
+        def request_handler():
+            while True:
+                try:
+                    request = client.recv(16) # max string of 16 chars
+                    if request:
+                        print(request.decode())
+                except TimeoutError: pass
+                except ConnectionResetError: break
+                except: raise
+
+                sleep(0.01)
+
+            print("Disconnected from server, closing client..")
+            client.close()
+
+        request_handler()
+    else:
+        robot = Robot()
+        robot.run()
