@@ -26,8 +26,7 @@ Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: J
 2. Search "cmd" on the laptop, enter `ipconfig /all` and scroll down until you see `Ethernet adapter Bluetooth Network Connection`. Copy the physical address, replacing the hyphens with colons. e.g. `6C-A1-00-05-72-DE` -> `6C:A1:00:05:72:DE`. Paste this into the "host_address" of the options.json file.
 3. Run controller.py. It should say "Server is listening on addr:port".
 4. Run client.py on the EV3. After 10-15 seconds, the window on the laptop should update to show a user interface.
-<h4>Capable of connecting one or two robots.</h4>
-
+* Capable of connecting one or two robots.
 * On the UI, change the slider and press the set speed button to change the speed of the respective robot.
 * Activating the switch will turn on/off the automatic gameplay.
 * The reset orientation button allows for reorientating the robot such as between rounds, on damaged callouts.
