@@ -9,7 +9,7 @@ from os import listdir
 
 BLUETOOTH = 0xF0
 LOCALHOST = 0xF1
-CONNECTION_MODE = LOCALHOST
+CONNECTION_MODE = BLUETOOTH
 
 f = join(Path(dirname(__file__)).parent, "themes")
 THEMES = sorted([x[:-5] for x in listdir(f) if "json" in x])
@@ -75,7 +75,9 @@ class App(CTk):
         move_angle_1, move_speed_1 = self.main_content.frame_1.get_movement_value()
         move_angle_2, move_speed_2 = self.main_content.frame_2.get_movement_value()
         if move_angle_1 and move_speed_1: self.server.send(0, "move %s %s" % (str(move_angle_1), str(move_speed_1)))
+        else: self.server.send(0, "manual_stop")
         if move_angle_2 and move_speed_2: self.server.send(1, "move %s %s" % (str(move_angle_2), str(move_speed_2)))
+        else: self.server.send(1, "manual_stop")
 
         if self.focused_robot:
             colour = [(hex_to_rgb(self.main_content.bg_colour)/255)**2 * 255]
@@ -86,7 +88,7 @@ class App(CTk):
                 self.main_content.frame_1.configure(bg_color=self.main_content.bg_colour)
                 self.main_content.frame_2.configure(bg_color=colour)
 
-        self.after(50, self.update)
+        self.after(40, self.update)
 
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
@@ -190,7 +192,8 @@ class Server:
         if index >= len(self.clients):
             return
         if isinstance(self.clients[index][0], socket.socket):
-            self.clients[index][0].send(str(content).encode())
+            c = (str(content) + "             ")[:16]
+            self.clients[index][0].send(c.encode())
         else:
             raise Exception("Server.send(content): Client is not connected.")
 

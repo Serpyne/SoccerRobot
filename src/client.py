@@ -3,7 +3,7 @@
 MOTORS = 0xA1
 SENSORS = 0xA2
 LOCALHOST = 0xA3
-DEBUG = LOCALHOST
+DEBUG = None
 
 import threading, json, socket
 from time import sleep
@@ -24,9 +24,9 @@ PORTS = {
 MAX_SPEED = 1560
 
 class Motor(MediumMotor):
-    def __init__(self, polarity_bias=1, speed_bias=1, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.polarity_bias = abs(polarity_bias)/polarity_bias if polarity_bias != 0 else 1
+    def __init__(self, address, polarity_bias:int=1, speed_bias=1, *args, **kwargs):
+        super().__init__(address=address, *args, **kwargs)
+        self.polarity_bias = (abs(int(polarity_bias)) // int(polarity_bias)) if polarity_bias != 0 else 1
         self.speed_bias = max(0.01, min(1, abs(speed_bias)))
 
     def run(self, speed):
@@ -78,21 +78,18 @@ class Robot:
 
         # Client initialisation
         data = json.load(open(join(dirname(__file__), "./options.json")))
-        target_host = data["host_address"]
-        target_port = data["host_port"]
-
+        self.target_host = data["host_address"]
+        self.target_port = data["host_port"]
         self.client = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
-        self.client.settimeout(1)
-        self.client.connect((target_host, target_port))
-        print("Connected on " + str(self.client.getsockname()))
+        self.client.settimeout(2)
 
-    def motors_init(self) -> list[Motor]:
+    def motors_init(self):
         """Initialise motors. Returns list of four motors."""
         return [
             Motor(PORTS["MOTORS"][0]),                     # LEFT    [0]
-            Motor(PORTS["MOTORS"][1]),                     # FRONT   [1]
+            Motor(PORTS["MOTORS"][1], polarity_bias=-1),   # FRONT   [1]
             Motor(PORTS["MOTORS"][2], polarity_bias=-1),   # RIGHT   [2]
-            Motor(PORTS["MOTORS"][3], polarity_bias=-1)    # BACK    [3]
+            Motor(PORTS["MOTORS"][3])                      # BACK    [3]
         ]
 
     def move(self, angle, speed=None):
@@ -134,6 +131,7 @@ class Robot:
         """Start threads for robot; updates, movement, and requests."""
 
         threads = [
+            threading.Thread(target=self.start_server),
             threading.Thread(target=self.update_loop),
             threading.Thread(target=self.movement_loop),
             threading.Thread(target=self.request_handler)
@@ -142,8 +140,19 @@ class Robot:
         for t in threads:
             t.start()
 
+        print("run()")
+
+    def start_server(self):
+        print("start_server()")
+
+        self.client.connect((self.target_host, self.target_port))
+        print("Connected on " + str(self.client.getsockname()))
+
     def request_handler(self):
         """Handle requests from server"""
+        
+        print("request_handler()")
+
         while True:
             try:
                 request = self.client.recv(16)
@@ -165,26 +174,29 @@ class Robot:
         if len(content) >= 2:
             command = content[0]
             value = content[1]
-            match command:
-                case "set_speed":
-                    self.move_speed = MAX_SPEED * float(value)
-                case "set_state":
-                    self.active = bool(int(value))
-                case "move":
-                    angle = float(content[1])
-                    speed = float(content[2])
-                    self.move(angle=angle, speed=MAX_SPEED * speed)
-                case _:
-                    self.client.send(request.encode())
+            if command == "set_speed":
+                self.move_speed = MAX_SPEED * float(value)
+            elif command == "set_state":
+                self.active = bool(int(value))
+            elif command == "move":
+                angle = float(content[1])
+                speed = float(content[2])
+                self.move(angle=angle, speed=MAX_SPEED * speed)
+            else:
+                self.client.send(request.encode())
         else:
-            if content == "reorientate":
-                self.original_orientation = self.orientation  
+            if "reorientate" in content:
+                self.original_orientation = self.orientation
+            elif "manual_stop" in content:
+                if not self.active:
+                    self.stop()
 
     def update_loop(self):
         """Update loop handling sensor values and gameplay logic."""
         if DEBUG == MOTORS:
             return
         
+        print("update_loop()")
         self.original_orientation = radians(self.compass_sensor.value()) % (2*pi)
 
         while True:
@@ -194,6 +206,8 @@ class Robot:
                 except Exception as e:
                     print("stopped for "+str(e))
                     break
+
+                self.wait(10)
 
         print("Stopping")
         self.ir_sensor.close()
@@ -216,8 +230,6 @@ class Robot:
 
             # for x in [self.ir_sensor.]
             # self.client.send()
-
-        self.wait(10)
 
     def gameplay(self): 
         """Gameplay logic"""
@@ -242,9 +254,10 @@ class Robot:
 
     def movement_loop(self):
         """Movement thread handling movement."""
+
+        print("movement_loop()")
         while True:
-            if self.active:
-                self.movement()
+            self.movement()
             sleep(.01)
 
     def stop_all_motors(self):
@@ -271,8 +284,8 @@ class Robot:
                 self.motors[1].run(vel[1])
                 self.motors[3].run(vel[1])
 
-        if not self.active:
-            self.stop_all_motors()
+        # if not self.active:
+        #     self.stop_all_motors()
 
 if __name__ == "__main__":
     if DEBUG == LOCALHOST:
@@ -302,6 +315,7 @@ if __name__ == "__main__":
 
             print("Disconnected from server, closing client..")
             client.close()
+
 
         request_handler()
     else:
