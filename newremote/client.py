@@ -3,7 +3,8 @@
 MOTORS = 0xA1
 SENSORS = 0xA2
 LOCALHOST = 0xA3
-DEBUG = None
+BUTTON = 0xA4
+DEBUG = BUTTON
 
 import threading, json, socket
 from time import sleep
@@ -12,8 +13,10 @@ from math import pi, cos, sin, radians
 
 from ev3dev2.motor import MediumMotor, OUTPUT_A, OUTPUT_B, OUTPUT_C, OUTPUT_D
 from ev3dev2.sensor import Sensor, INPUT_1, INPUT_2, INPUT_3, INPUT_4
-if DEBUG in (SENSORS, None):
+if DEBUG in (SENSORS, BUTTON, None):
     from sensor import IRSeeker360
+if DEBUG == BUTTON:
+    from ev3dev2.button import Button
 
 PORTS = {
     "MOTORS":   [OUTPUT_A, OUTPUT_B, OUTPUT_C, OUTPUT_D],
@@ -60,12 +63,22 @@ class Robot:
             self.compass_sensor = CompassSensor(PORTS["COMPASS"])
             self.ir_sensor = IRSeeker360(PORTS["IR"])
         
+        elif DEBUG == BUTTON:
+            self.motors = self.motors_init()
+            self.compass_sensor = CompassSensor(PORTS["COMPASS"])
+            self.ir_sensor = IRSeeker360(PORTS["IR"])
+
+            self.controls = Button()
+            self.button_pressed = False
+
+            self.controls.on_enter = self.on_enter
+
         else: raise Exception("Debug mode must be None, MOTORS, or SENSORS.")
 
         self.orientation = 0
         self.original_orientation = 0
 
-        self.move_direction = None
+        self.move_direction = 0
         self.move_speed = MAX_SPEED
 
         self.see_ball = False
@@ -73,6 +86,7 @@ class Robot:
 
         self.detection_extent = radians(31)
 
+        self.manually_moving = False
         self.active = False
         self.tick = 0
 
@@ -83,6 +97,10 @@ class Robot:
         self.client = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
         self.client.settimeout(2)
 
+    def on_enter(self, state):
+        if not state:
+            self.active = not self.active
+
     def motors_init(self):
         """Initialise motors. Returns list of four motors."""
         return [
@@ -92,11 +110,14 @@ class Robot:
             Motor(PORTS["MOTORS"][3])                      # BACK    [3]
         ]
 
-    def move(self, angle, speed=None):
+    def move(self, angle, speed=None, relative=False):
         """Set move direction and speed of robot"""
 
         if angle != None:
-            self.move_direction = (angle - self.orientation) % (2*pi)
+            if relative:
+                self.move_direction = angle % (2*pi)
+            else:
+                self.move_direction = (angle - self.orientation) % (2*pi)
         if speed:
             self.move_speed = speed
 
@@ -156,6 +177,7 @@ class Robot:
         while True:
             try:
                 request = self.client.recv(16)
+                self.manually_moving = False
                 if request:
                     self.process_request(request.decode())
             except TimeoutError: pass
@@ -182,6 +204,7 @@ class Robot:
                 angle = float(content[1])
                 speed = float(content[2])
                 self.move(angle=angle, speed=MAX_SPEED * speed)
+                self.manually_moving = True
             else:
                 self.client.send(request.encode())
         else:
@@ -200,64 +223,89 @@ class Robot:
         self.original_orientation = radians(self.compass_sensor.value()) % (2*pi)
 
         while True:
-            if self.active:
-                try:
-                    self.update()
-                except Exception as e:
-                    print("stopped for "+str(e))
-                    break
+            try:
+                self.update()
+            except Exception as e:
+                print("stopped for "+str(e))
+                break
 
-                self.wait(10)
+            sleep(0.01)
 
         print("Stopping")
         self.ir_sensor.close()
 
     def update(self):
         """Fixed update for getting sensor values and gameplay logic."""
-        if (self.tick % 20) == 0:
-            self.compass_sensor.angle = self.compass_sensor.value()
-            self.orientation = (radians(self.compass_sensor.angle) - self.original_orientation) % (2*pi)
+        self.compass_sensor.angle = self.compass_sensor.value()
+        self.orientation = (radians(self.compass_sensor.angle) - self.original_orientation) % (2*pi)
 
-            self.relative_ball_angle, self.ball_strength = self.ir_sensor.read()
-            self.relative_ball_angle_radians = (self.relative_ball_angle % 12) * pi/6
-            self.global_ball_angle = (self.relative_ball_angle_radians + self.orientation) % (2*pi)
-            
-            self.see_ball = False
-            if self.ball_strength > 1:
-                self.see_ball = True
+        self.relative_ball_angle, self.ball_strength = self.ir_sensor.read()
+        self.relative_ball_angle_radians = (self.relative_ball_angle % 12) * pi/6
+        self.global_ball_angle = (self.relative_ball_angle_radians + self.orientation) % (2*pi)
+        
+        self.see_ball = False
+        if self.ball_strength > 10:
+            self.see_ball = True
 
-            self.gameplay()
+        self.gameplay()
 
-            # for x in [self.ir_sensor.]
-            # self.client.send()
+        if DEBUG == BUTTON:
+            self.controls.process()
 
-    def gameplay(self): 
-        """Gameplay logic"""
-        if self.global_ball_angle > 3*pi/2 or self.global_ball_angle < pi/2:
+    def gameplay(self):
+        """
+        Gameplay logic\n
+        if ball is in front
+            if ball is near, move forward
+            or 
+            if ball is not near:
+                then if the ball is forward, move forward
+                or if the ball is not forward:
+                    if ball is right, move right
+                    if ball is left, move left
+        if ball is behind
+            if ball is directly behind, move left
+            if ball is not directly behind, move backwards
+        """
+        self.client.send((str(round(self.relative_ball_angle_radians, 4)) + " " + str(round(self.global_ball_angle, 4))).encode())
+        # if self.global_ball_angle > 3*pi/2 or self.global_ball_angle < pi/2:
 
-            if self.ball_strength > 80:
-                self.move(0)
-            else:
-                if self.global_ball_angle > 2*pi-self.detection_extent or self.global_ball_angle < self.detection_extent:
-                    self.move(0)
-                else:
-                    if self.global_ball_angle < pi:
-                        self.move(pi/2)
-                    else:
-                        self.move(3*pi/2)
+        #     if self.ball_strength > 85:
+        #         self.move(0)
+        #         self.client.send("forward".encode())
+        #     else:
+        #         if self.global_ball_angle > 2*pi-self.detection_extent or self.global_ball_angle < self.detection_extent:
+        #             self.move(0)
+        #             self.client.send("forward".encode())
+        #         else:
+        #             if self.global_ball_angle < pi:
+        #                 self.move(pi/2)
+        #                 self.client.send("right".encode())
+        #             else:
+        #                 self.move(3*pi/2)
+        #                 self.client.send("left".encode())
 
-        else:
-            if self.global_ball_angle > pi - .3 and self.global_ball_angle < pi + .3:
-                self.move(3*pi/2)
-            else:
-                self.move(pi)
+        # else:
+        #     if self.global_ball_angle > pi - .3 and self.global_ball_angle < pi + .3:
+        #         self.move(3*pi/2)
+        #         self.client.send("left".encode())
+        #     else:
+        #         self.move(pi)
+        #         self.client.send("backward".encode())
+        self.move(self.relative_ball_angle_radians, relative=True)
+        
+        if not self.see_ball:
+            self.move(pi)
 
     def movement_loop(self):
         """Movement thread handling movement."""
 
         print("movement_loop()")
         while True:
-            self.movement()
+            if self.manually_moving or self.active:
+                self.movement()
+            elif self.active == False and self.manually_moving == False:
+                self.stop_all_motors()
             sleep(.01)
 
     def stop_all_motors(self):
@@ -271,7 +319,7 @@ class Robot:
         """Fixed update for movement: rotating or stopping motors."""
         if DEBUG == SENSORS:
             return
-
+        
         if self.move_direction == None or self.move_speed == None:
             self.stop_all_motors()
         else:
@@ -283,9 +331,6 @@ class Robot:
             if vel[1]:
                 self.motors[1].run(vel[1])
                 self.motors[3].run(vel[1])
-
-        # if not self.active:
-        #     self.stop_all_motors()
 
 if __name__ == "__main__":
     if DEBUG == LOCALHOST:
