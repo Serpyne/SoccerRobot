@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "/home/robot/src/SECONDROOMBA.py", line 166, in <module>
-    if max(ir[0].strength, ir[1].strength) > 2:
-TypeError: unorderable types: int() > NoneType()

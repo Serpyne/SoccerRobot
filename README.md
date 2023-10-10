@@ -2,10 +2,13 @@ Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: J
 <br>
 
 # Index
+simulation.py: simulates the environment of a robot, includes indivdual motor movement.
 * ./remote/
   * client.py is what runs on the robot, which controls client-sided movement + receiving controller values
   * server.py is what you run on your laptop, so the robot can connect to it and an external controller communicates with it.
 * ./src/
+  * code written before and during nationals competition.
+* ./newremote/
   * client.py* runs on both robots
   * controller.py runs on the laptop, connects both robots through bluetooth
 * ./themes/
@@ -21,7 +24,13 @@ Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: J
 <h5>*DEBUG = None for normal bluetooth with all ports. DEBUG = MOTORS for motor debugging. DEBUG = SENSORS for sensor debugging. DEBUG = LOCALHOST connects through localhost instead of bluetooth. Requires the server to be localhost as well.</h5>
 <br>
 
-# Instructions for ./src/ (current)
+# Robot Simulator
+Currently working on a simulator for the robot, ball, and field. Press m to cycle through different movement modes. Individual motors is the most issue as it includes rotation and you can program the individual motors to turn. Automatic mode reuses my automated code from the EV3 robot, and uses 'virtual IR sensors' to detect the ball. Click to move the ball around.
+
+# Note:
+I had issues at Nationals involving the compass sensor spazzing out, and I have no idea if it was interference from the motors or just the earth being weird. Much of the code in ./src is follow-ball or hastily written for our games.
+
+# Instructions for ./newremote/ (current)
 1. Go to "Wireless and Networks" on the EV3 and connect to the laptop through bluetooth. It should be connected if there is an address at the top of the display.
 2. Search "cmd" on the laptop, enter `ipconfig /all` and scroll down until you see `Ethernet adapter Bluetooth Network Connection`. Copy the physical address, replacing the hyphens with colons. e.g. `6C-A1-00-05-72-DE` -> `6C:A1:00:05:72:DE`. Paste this into the "host_address" of the options.json file.
 3. Run controller.py. It should say "Server is listening on addr:port".

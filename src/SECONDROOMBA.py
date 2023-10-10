@@ -54,8 +54,8 @@ class InfraredSensor(Sensor):
         else: self.strength = 0
 
 def average_two_angles_radians(a1, a2):
-    d = ((a2 - a1 + pi/2) % pi) - pi/2
-    return (a1 + d/2) % pi
+    d = ((a2 - a1 + pi/2) % (pi)) - pi/2
+    return (a1 + d/2) % (pi)
 
 active = False
 print("Started")
@@ -123,7 +123,7 @@ def move(angle_radians):
 
     return vel
 
-detection_extent = radians(40)
+detection_extent = radians(30)
 forward = radians(30)
 facing_forward = True
 turned = False
@@ -168,10 +168,9 @@ while True:
                     else:
                         backward = radians(5)
                     if relative_ball_direction > pi - backward and relative_ball_direction < pi + backward:
-                        move(pi/3)
+                        move(2*pi/3)
                     else:
                         move(pi)
-                print(ir[0].direction)
                 
                 first_time_not_seeing_ball = False
                 see_ball = True
@@ -187,13 +186,9 @@ while True:
                         break
 
                 if stalled:
-                    move_dir = (move_dir + pi/2 + uniform(-.3, .3)) % (2*pi)
+                    move_dir = (move_dir + uniform(-.1, .5)) % (2*pi)
 
-                vel = [int(cos(move_dir - pi) * (MAX_SPEED - 600)), int(sin(move_dir - pi) * (MAX_SPEED - 600))]
-                motors[0].run(vel[0] + 600)
-                motors[1].run(vel[1] + 600)
-                motors[2].run(vel[0] -600)
-                motors[3].run(vel[1] -600)
+                move(move_dir)
 
                 see_ball = False
 
@@ -204,7 +199,7 @@ while True:
                     facing_forward = True
                     turned = True
             else:
-                turn = 360
+                turn = 400
                 vel = [int(cos(relative_ball_direction - pi) * (MAX_SPEED - turn)), int(sin(relative_ball_direction - pi) * (MAX_SPEED - turn))]
                 if orientation < pi/2:
                     motors[0].run(turn)
