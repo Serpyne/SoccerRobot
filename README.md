@@ -2,7 +2,7 @@ Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: J
 <br>
 
 # Index
-simulation.py: simulates the environment of a robot, includes indivdual motor movement.
+* simulation.py: simulates the environment of a robot, includes indivdual motor movement.
 * ./remote/
   * client.py is what runs on the robot, which controls client-sided movement + receiving controller values
   * server.py is what you run on your laptop, so the robot can connect to it and an external controller communicates with it.
