@@ -26,6 +26,7 @@ Our team, *404 Not Found*, is led by Kartik, and our builders and programmers: J
 
 # Robot Simulator
 Currently working on a simulator for the robot, ball, and field. Press m to cycle through different movement modes. Individual motors is the most useful as it includes rotation and you can program the individual motors to turn. Automatic mode reuses my automated code from the EV3 robot, and uses 'virtual IR sensors' to detect the ball. Click to move the ball around.
+![Simultaneous Rotation and Translation](/assets/img4.png?raw=true "Simultaneous Rotation and Translation")
 
 # Note:
 I had issues at Nationals involving the compass sensor spazzing out, and I have no idea if it was interference from the motors or just the earth being weird. Much of the code in ./src is follow-ball or hastily written for our games.

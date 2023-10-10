@@ -131,9 +131,9 @@ class Robot:
 
     def move(self, rel_pos, rel_angle):
         direction = atan2(rel_pos[1], rel_pos[0])
-        l = sqrt(rel_pos[0]**2 + rel_pos[1]**2)
+        length = sqrt(rel_pos[0]**2 + rel_pos[1]**2)
         for i in range(4):
-            self.speed[i] = (l * cos(self.orientation + i * pi/2 + direction - pi/2) + rel_angle) * self.wheel_speed
+            self.speed[i] = (length * cos(self.orientation + i * pi/2 + direction - pi/2) + rel_angle) * self.wheel_speed
 
     def rotate_around(self, point1, point2, a):
         if point1 == point2:
