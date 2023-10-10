@@ -167,7 +167,7 @@ class Robot:
         for i in range(4):
             pygame.draw.rect(screen, (100, 100, 100), (ss[0]-160, 10 * (i+1), 150, 2))
             if max(self.speed) != 0:
-                pygame.draw.rect(screen, self.colors[i], (ss[0]-160, 10 * (i+1), self.speed[i]/max(self.speed)*150, 2))
+                pygame.draw.rect(screen, self.colors[i], (ss[0]-160, 10 * (i+1), abs(self.speed[i]/max(self.speed)*150), 2))
 
         for i, line in enumerate(self.log):
             screen.blit(pygame.font.SysFont(None, 24).render(line[0], 1, line[1]), (10, 10 + i * 25))
@@ -237,10 +237,6 @@ class Robot:
         self.vel[0] = self.origin[0] - old_pos[0]
         self.vel[1] = self.origin[1] - old_pos[1]
 
-        if not self.destination:
-            for i in range(4):
-                self.speed[i] = 0
-
         self.hitbox = Polygon([(self.origin[0] + cos(a * pi/4 + pi/8) * self.radius * 1.1, self.origin[1] + sin(a * pi/4 + pi/8) * self.radius * 1.1) for a in range(8)])
 
         self.irs[0].position = [self.origin[0], self.origin[1] - 10]
@@ -251,6 +247,10 @@ class Robot:
         robot.gameplay()
 
         self.draw()
+
+        if not self.destination:
+            for i in range(4):
+                self.speed[i] = 0
 
     def average_two_angles_radians(self, a1, a2):
         d = ((a2 - a1 + pi/2) % (pi)) - pi/2
